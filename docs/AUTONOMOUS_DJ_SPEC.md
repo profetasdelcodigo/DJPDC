@@ -26,6 +26,15 @@ The main screen should show:
 
 Do not expose two-deck panels, BPM numbers, waveform editing, cue controls, EQ sliders or crossfader in the default mode.
 
+## Music source — user's phone library only
+
+- The only source for tracks that DJPDC selects and plays is the user's own accessible music library on the Android device (MediaStore content URIs obtained with the user's permission).
+- The AI must select only tracks present in the current library inventory. It must never fabricate track entries or silently substitute streaming, YouTube, Spotify, radio, cloud catalogs or remote audio.
+- If a requested genre, artist, mood or language is not represented in the local library, explain that the library does not currently contain a suitable match and offer the closest available local alternatives. Never pretend a missing track exists.
+- Re-scan or refresh the library only with appropriate Android permission. Handle removed, moved, revoked or unreadable files gracefully.
+- Keep audio analysis on-device by default. Cloud AI may receive only the minimum metadata needed for planning; do not upload audio files or share the library externally without separate, explicit user consent.
+- The user can exclude tracks or folders and can ask the AI to use favorites or a chosen playlist as its selection pool.
+
 ## Autonomous responsibilities
 
 When Auto DJ is enabled, the system should:
