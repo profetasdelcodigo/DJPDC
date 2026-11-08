@@ -927,6 +927,19 @@ class MainActivity : ComponentActivity() {
                 playerB.volume = 0f
                 playerB.play()
                 deckBTrack = next
+                // Give Media3 time to buffer Deck B before starting the fade.
+                var readyWaitMs = 0L
+                while (!playerB.isPlaying && readyWaitMs < 5_000L &&
+                    autoDjSessionState.mode == AutoDJMode.ACTIVE &&
+                    currentTrack?.id == activeTrack.id
+                ) {
+                    delay(100L)
+                    readyWaitMs += 100L
+                }
+                if (!playerB.isPlaying) {
+                    stopAutoDJ("Deck B could not start the next local track; the current song was left alone.")
+                    return
+                }
                 val startedAt = android.os.SystemClock.elapsedRealtime()
                 var cancelled = false
                 while (true) {
