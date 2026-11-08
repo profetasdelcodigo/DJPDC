@@ -115,3 +115,9 @@ A successful workflow run is still required before treating the current source a
 - Adds small ±20 ms seek adjustments for Deck B so a user can manually refine the relative timing while listening.
 - Nudge calculations clamp to the track boundaries and are covered by unit tests.
 - This is a seek-based manual aid, not automatic transient detection, downbeat detection, phase lock, or guaranteed synchronization. Seek precision depends on the media format and Android playback pipeline.
+
+### Local audio onset detection groundwork
+- Adds a pure Kotlin detector that analyzes decoded mono PCM in short overlapping RMS windows and identifies likely transient onsets from positive energy changes.
+- Returns estimated onset timestamps and a normalized relative-strength indicator; invalid input is rejected and silence returns an empty result.
+- Adds synthetic transient, silence, and invalid-input unit tests.
+- This is offline onset detection groundwork only. It does not yet determine musical beats, downbeats, tempo, or phase, and is not connected to the playback path or Auto DJ. Accuracy on real mixed music and device performance still require testing.
