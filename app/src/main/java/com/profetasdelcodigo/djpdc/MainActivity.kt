@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("DJPDC", style = MaterialTheme.typography.headlineLarge, color = Color.White)
                             Spacer(Modifier.weight(1f))
-                            Text("BETA 0.3", color = Color(0xFF76B900))
+                            Text("BETA 0.4", color = Color(0xFF76B900))
                         }
                         Text("YOUR MUSIC. YOUR MIX.", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelLarge)
 
