@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -64,6 +65,10 @@ class MainActivity : ComponentActivity() {
     private var playbackDurationMs by mutableStateOf(0L)
     private var showQueue by mutableStateOf(false)
     private val queueTracks = mutableStateListOf<Track>()
+    private val playlistNames = mutableStateListOf<String>()
+    private var selectedPlaylistName by mutableStateOf<String?>(null)
+    private var playlistNameInput by mutableStateOf("")
+    private val playlistRepository by lazy { PlaylistRepository(this) }
     private var libraryMessage by mutableStateOf("Your local tracks will appear here.")
     private var controller: MediaController? = null
     private lateinit var controllerFuture: ListenableFuture<MediaController>
@@ -98,6 +103,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectPlaybackService()
+        playlistNames.addAll(playlistRepository.names())
         favoriteTrackIds.addAll(getSharedPreferences("djpdc_library", Context.MODE_PRIVATE)
             .getStringSet("favorite_track_ids", emptySet())
             .orEmpty()
@@ -116,9 +122,11 @@ class MainActivity : ComponentActivity() {
                     delay(500)
                 }
             }
+            val selectedPlaylistIds = selectedPlaylistName?.let { playlistRepository.trackIds(it) } ?: emptySet()
             val filteredTracks = tracks.filter { track ->
                 val query = searchQuery.trim()
                 (!showFavoritesOnly || track.id in favoriteTrackIds) &&
+                    (selectedPlaylistName == null || track.id in selectedPlaylistIds) &&
                     (query.isEmpty() || track.title.contains(query, ignoreCase = true) ||
                         track.artist.contains(query, ignoreCase = true) ||
                         track.album.contains(query, ignoreCase = true))
@@ -267,8 +275,52 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { showFavoritesOnly = false }) { Text(if (!showFavoritesOnly) "All tracks ✓" else "All tracks") }
-                            Button(onClick = { showFavoritesOnly = true }) { Text(if (showFavoritesOnly) "Favorites ✓" else "Favorites") }
+                            Button(onClick = { showFavoritesOnly = false; selectedPlaylistName = null }) {
+                                Text(if (!showFavoritesOnly && selectedPlaylistName == null) "All tracks ✓" else "All tracks")
+                            }
+                            Button(onClick = { showFavoritesOnly = true; selectedPlaylistName = null }) {
+                                Text(if (showFavoritesOnly) "Favorites ✓" else "Favorites")
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = playlistNameInput,
+                                onValueChange = { playlistNameInput = it },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                placeholder = { Text("New playlist name") }
+                            )
+                            Button(
+                                onClick = {
+                                    val name = playlistNameInput.trim()
+                                    if (name.isNotEmpty() && filteredTracks.isNotEmpty()) {
+                                        playlistRepository.save(name, filteredTracks.map { it.id })
+                                        playlistNames.clear()
+                                        playlistNames.addAll(playlistRepository.names())
+                                        selectedPlaylistName = name
+                                        showFavoritesOnly = false
+                                        playlistNameInput = ""
+                                    }
+                                },
+                                enabled = playlistNameInput.isNotBlank() && filteredTracks.isNotEmpty()
+                            ) { Text("Save") }
+                        }
+                        if (playlistNames.isNotEmpty()) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(playlistNames) { name ->
+                                    Button(onClick = {
+                                        selectedPlaylistName = if (selectedPlaylistName == name) null else name
+                                        showFavoritesOnly = false
+                                    }) {
+                                        Text(if (selectedPlaylistName == name) "$name ✓" else name)
+                                    }
+                                }
+                            }
                         }
 
                         if (showQueue) {
@@ -376,12 +428,16 @@ class MainActivity : ComponentActivity() {
 
     private fun playTrack(track: Track) {
         val activePlayer = controller ?: return
-        val index = tracks.indexOfFirst { it.id == track.id }
+        val activeQueue = selectedPlaylistName?.let { name ->
+            val ids = playlistRepository.trackIds(name)
+            tracks.filter { it.id in ids }
+        } ?: tracks.toList()
+        val index = activeQueue.indexOfFirst { it.id == track.id }
         if (index < 0) return
         currentTrack = track
         queueTracks.clear()
-        queueTracks.addAll(tracks)
-        activePlayer.setMediaItems(tracks.map { MediaItem.fromUri(it.contentUri) }, index, 0L)
+        queueTracks.addAll(activeQueue)
+        activePlayer.setMediaItems(activeQueue.map { MediaItem.fromUri(it.contentUri) }, index, 0L)
         activePlayer.prepare()
         activePlayer.play()
     }
