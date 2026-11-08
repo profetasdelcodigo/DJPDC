@@ -1,6 +1,7 @@
 package com.profetasdelcodigo.djpdc
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,17 +33,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
 
 class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
+    private var controllerReady by mutableStateOf(false)
     private val tracks = mutableStateListOf<Track>()
     private var currentTrack by mutableStateOf<Track?>(null)
     private var isPlaying by mutableStateOf(false)
     private var libraryMessage by mutableStateOf("Your local tracks will appear here.")
-    private lateinit var player: ExoPlayer
+    private var controller: MediaController? = null
+    private lateinit var controllerFuture: ListenableFuture<MediaController>
 
     private val audioPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -66,9 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        player = ExoPlayer.Builder(this).build().also {
-            it.addListener(playerListener)
-        }
+        connectPlaybackService()
         permissionGranted = hasAudioPermission()
         if (permissionGranted) loadLibrary()
 
@@ -86,7 +89,7 @@ class MainActivity : ComponentActivity() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("DJPDC", style = MaterialTheme.typography.headlineLarge, color = Color.White)
                             Spacer(Modifier.weight(1f))
-                            Text("BETA 0.2", color = Color(0xFF76B900))
+                            Text("BETA 0.3", color = Color(0xFF76B900))
                         }
                         Text("YOUR MUSIC. YOUR MIX.", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelLarge)
 
@@ -105,20 +108,22 @@ class MainActivity : ComponentActivity() {
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    currentTrack?.artist ?: "DJPDC local player",
+                                    currentTrack?.artist ?: if (controllerReady) "DJPDC playback engine ready" else "Connecting playback engine…",
                                     color = Color(0xFF9AA39A),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Button(
                                         onClick = {
-                                            if (isPlaying) player.pause() else if (currentTrack != null) player.play()
+                                            val activePlayer = controller ?: return@Button
+                                            if (isPlaying) activePlayer.pause()
+                                            else if (currentTrack != null) activePlayer.play()
                                         },
-                                        enabled = currentTrack != null
+                                        enabled = controllerReady && currentTrack != null
                                     ) { Text(if (isPlaying) "Pause" else "Play") }
                                     Button(
-                                        onClick = { player.seekToNextMediaItem() },
-                                        enabled = player.mediaItemCount > 1
+                                        onClick = { controller?.seekToNextMediaItem() },
+                                        enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
                                     ) { Text("Next") }
                                 }
                             }
@@ -143,16 +148,35 @@ class MainActivity : ComponentActivity() {
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(tracks, key = { it.id }) { track ->
-                                    TrackRow(track = track, onClick = { playTrack(track) })
+                                    TrackRow(
+                                        track = track,
+                                        enabled = controllerReady,
+                                        onClick = { playTrack(track) }
+                                    )
                                 }
                             }
                         }
 
-                        Text("AUTO DJ  ·  MANUAL DECKS  ·  LOCAL AUDIO", color = Color(0xFF6F786F), style = MaterialTheme.typography.labelSmall)
+                        Text("BACKGROUND AUDIO  ·  AUTO DJ  ·  MANUAL DECKS", color = Color(0xFF6F786F), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
         }
+    }
+
+    private fun connectPlaybackService() {
+        val token = SessionToken(this, ComponentName(this, DJPlaybackService::class.java))
+        controllerFuture = MediaController.Builder(this, token).buildAsync()
+        controllerFuture.addListener({
+            try {
+                controller = controllerFuture.get().also { mediaController ->
+                    mediaController.addListener(playerListener)
+                    controllerReady = true
+                }
+            } catch (_: Exception) {
+                libraryMessage = "Playback service could not start. Restart DJPDC and try again."
+            }
+        }, ContextCompat.getMainExecutor(this))
     }
 
     private fun loadLibrary() {
@@ -172,12 +196,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun playTrack(track: Track) {
+        val activePlayer = controller ?: return
         val index = tracks.indexOfFirst { it.id == track.id }
         if (index < 0) return
         currentTrack = track
-        player.setMediaItems(tracks.map { MediaItem.fromUri(it.contentUri) }, index, 0L)
-        player.prepare()
-        player.play()
+        activePlayer.setMediaItems(tracks.map { MediaItem.fromUri(it.contentUri) }, index, 0L)
+        activePlayer.prepare()
+        activePlayer.play()
     }
 
     private fun hasAudioPermission(): Boolean {
@@ -193,16 +218,17 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        player.removeListener(playerListener)
-        player.release()
+        controller?.removeListener(playerListener)
+        MediaController.releaseFuture(controllerFuture)
+        controller = null
         super.onDestroy()
     }
 }
 
 @androidx.compose.runtime.Composable
-private fun TrackRow(track: Track, onClick: () -> Unit) {
+private fun TrackRow(track: Track, enabled: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),
         color = Color(0xFF151815),
         shape = RoundedCornerShape(14.dp)
     ) {
