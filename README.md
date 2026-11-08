@@ -35,7 +35,7 @@ DJPDC is an Android application built around a local-first audio engine, with an
 1. Validate the Android build on CI and a physical device.
 2. Verify background playback service, media notification, lock-screen controls, and queue management.
 3. Add playlist editing (rename, remove tracks, delete playlists) and richer metadata; basic local playlists and album artwork are integrated.
-4. Connect the equal-power crossfader math to two independent playback decks; then add BPM analysis, beat matching, and transitions.
+4. Add BPM analysis, beat matching, and smoother transitions to the two-deck playback foundation.
 5. Add intelligent track selection and transition suggestions through a secure backend.
 6. Optimize audio performance and test across Android devices.
 
@@ -73,3 +73,12 @@ A successful workflow run is still required before treating the current source a
 - The crossfader position is normalized and clamped; center position gives each deck approximately 0.707 gain.
 - Adds channel-volume gain calculation and unit tests for endpoints, center balance, clamping, and channel gain.
 - This is DSP groundwork only: two independent audio players and an audible crossfade are not yet connected.
+
+
+### Two-deck playback foundation (Beta 0.8)
+- Deck A continues using the primary MediaSession playback service.
+- Adds an independent Deck B MediaSession service and ExoPlayer instance.
+- Tracks can be loaded into Deck B from the local library and played or paused independently of Deck A.
+- Adds an equal-power crossfader that adjusts the actual volume of both players.
+- Crossfader endpoints route audio to one deck; the center balances both decks.
+- This is the first functional two-player mixing foundation. BPM detection, beat synchronization, EQ, effects, and device-level audio latency tuning remain future work.
