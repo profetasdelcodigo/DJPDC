@@ -90,3 +90,9 @@ A successful workflow run is still required before treating the current source a
 - Adds unit tests for tap-tempo calculation, minimum taps, outlier resistance, and supported tempo range.
 - Crossfader endpoints route audio to one deck; the center balances both decks.
 - This is the first functional two-player mixing foundation with per-deck level controls and manual tap-tempo measurement. Automatic audio BPM detection, beat synchronization, EQ, effects, and device-level audio latency tuning remain future work.
+
+
+### Automatic BPM analysis groundwork
+- Adds a pure Kotlin PCM tempo estimator based on short-window RMS energy, positive energy changes, and onset-envelope autocorrelation.
+- Includes synthetic 100 BPM and 120 BPM audio tests, plus silence, short-input, invalid-rate, and non-finite sample checks.
+- The estimator accepts decoded mono PCM samples; MediaExtractor/MediaCodec decoding and automatic per-track UI integration are not yet connected. Do not treat this as automatic BPM detection in the app until that integration is complete and device-tested.
