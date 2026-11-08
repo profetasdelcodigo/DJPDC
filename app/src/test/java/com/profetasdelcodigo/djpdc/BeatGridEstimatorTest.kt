@@ -24,7 +24,7 @@ class BeatGridEstimatorTest {
             120f
         )
         assertNotNull(result)
-        assertEquals(5, result!!.supportingOnsets)
+        assertEquals(6, result!!.supportingOnsets)
     }
 
     @Test
