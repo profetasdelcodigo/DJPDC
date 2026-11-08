@@ -139,42 +139,46 @@ class MainActivity : ComponentActivity() {
                                     color = Color(0xFF9AA39A),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(
-                                        onClick = {
-                                            val activePlayer = controller ?: return@Button
-                                            if (isPlaying) activePlayer.pause()
-                                            else if (currentTrack != null) activePlayer.play()
-                                        },
-                                        enabled = controllerReady && currentTrack != null
-                                    ) { Text(if (isPlaying) "Pause" else "Play") }
-                                    Button(
-                                        onClick = { controller?.seekToNextMediaItem() },
-                                        enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
-                                    ) { Text("Next") }
-                                    Button(
-                                        onClick = {
-                                            val activePlayer = controller ?: return@Button
-                                            activePlayer.shuffleModeEnabled = !activePlayer.shuffleModeEnabled
-                                        },
-                                        enabled = controllerReady
-                                    ) { Text(if (shuffleEnabled) "Shuffle ON" else "Shuffle") }
-                                    Button(
-                                        onClick = {
-                                            val activePlayer = controller ?: return@Button
-                                            activePlayer.repeatMode = when (activePlayer.repeatMode) {
-                                                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                                                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                                                else -> Player.REPEAT_MODE_OFF
-                                            }
-                                        },
-                                        enabled = controllerReady
-                                    ) {
-                                        Text(when (repeatMode) {
-                                            Player.REPEAT_MODE_ALL -> "Repeat ALL"
-                                            Player.REPEAT_MODE_ONE -> "Repeat ONE"
-                                            else -> "Repeat OFF"
-                                        })
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = {
+                                                val activePlayer = controller ?: return@Button
+                                                if (isPlaying) activePlayer.pause()
+                                                else if (currentTrack != null) activePlayer.play()
+                                            },
+                                            enabled = controllerReady && currentTrack != null
+                                        ) { Text(if (isPlaying) "Pause" else "Play") }
+                                        Button(
+                                            onClick = { controller?.seekToNextMediaItem() },
+                                            enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
+                                        ) { Text("Next") }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = {
+                                                val activePlayer = controller ?: return@Button
+                                                activePlayer.shuffleModeEnabled = !activePlayer.shuffleModeEnabled
+                                            },
+                                            enabled = controllerReady
+                                        ) { Text(if (shuffleEnabled) "Shuffle ON" else "Shuffle") }
+                                        Button(
+                                            onClick = {
+                                                val activePlayer = controller ?: return@Button
+                                                activePlayer.repeatMode = when (activePlayer.repeatMode) {
+                                                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                                                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                                                    else -> Player.REPEAT_MODE_OFF
+                                                }
+                                            },
+                                            enabled = controllerReady
+                                        ) {
+                                            Text(when (repeatMode) {
+                                                Player.REPEAT_MODE_ALL -> "Repeat ALL"
+                                                Player.REPEAT_MODE_ONE -> "Repeat ONE"
+                                                else -> "Repeat OFF"
+                                            })
+                                        }
                                     }
                                 }
                             }
