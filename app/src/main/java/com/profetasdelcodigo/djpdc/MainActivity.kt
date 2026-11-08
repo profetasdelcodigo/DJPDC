@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +47,8 @@ class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
     private var controllerReady by mutableStateOf(false)
     private val tracks = mutableStateListOf<Track>()
+    private val favoriteTrackIds = mutableStateListOf<Long>()
+    private var showFavoritesOnly by mutableStateOf(false)
     private var currentTrack by mutableStateOf<Track?>(null)
     private var isPlaying by mutableStateOf(false)
     private var searchQuery by mutableStateOf("")
@@ -85,15 +88,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectPlaybackService()
+        favoriteTrackIds.addAll(getSharedPreferences("djpdc_library", Context.MODE_PRIVATE)
+            .getStringSet("favorite_track_ids", emptySet())
+            .orEmpty()
+            .mapNotNull { it.toLongOrNull() })
         permissionGranted = hasAudioPermission()
         if (permissionGranted) loadLibrary()
 
         setContent {
             val filteredTracks = tracks.filter { track ->
                 val query = searchQuery.trim()
-                query.isEmpty() || track.title.contains(query, ignoreCase = true) ||
-                    track.artist.contains(query, ignoreCase = true) ||
-                    track.album.contains(query, ignoreCase = true)
+                (!showFavoritesOnly || track.id in favoriteTrackIds) &&
+                    (query.isEmpty() || track.title.contains(query, ignoreCase = true) ||
+                        track.artist.contains(query, ignoreCase = true) ||
+                        track.album.contains(query, ignoreCase = true))
             }
             MaterialTheme(colorScheme = darkColorScheme(
                 primary = Color(0xFF76B900),
@@ -179,6 +187,11 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { loadLibrary() }, enabled = permissionGranted) { Text("Scan") }
                         }
 
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { showFavoritesOnly = false }) { Text(if (!showFavoritesOnly) "All tracks ✓" else "All tracks") }
+                            Button(onClick = { showFavoritesOnly = true }) { Text(if (showFavoritesOnly) "Favorites ✓" else "Favorites") }
+                        }
+
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
@@ -201,7 +214,7 @@ class MainActivity : ComponentActivity() {
                             Text(libraryMessage, color = Color(0xFFADB5AD))
                             Button(onClick = { loadLibrary() }) { Text("Rescan library") }
                         } else if (filteredTracks.isEmpty()) {
-                            Text("No tracks match your search.", color = Color(0xFFADB5AD))
+                            Text(if (showFavoritesOnly) "No favorites yet. Tap ☆ on a track to save it." else "No tracks match your search.", color = Color(0xFFADB5AD))
                         } else {
                             LazyColumn(
                                 modifier = Modifier.weight(1f),
@@ -211,6 +224,8 @@ class MainActivity : ComponentActivity() {
                                     TrackRow(
                                         track = track,
                                         enabled = controllerReady,
+                                        isFavorite = track.id in favoriteTrackIds,
+                                        onFavoriteClick = { toggleFavorite(track) },
                                         onClick = { playTrack(track) }
                                     )
                                 }
@@ -255,6 +270,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun toggleFavorite(track: Track) {
+        if (track.id in favoriteTrackIds) favoriteTrackIds.remove(track.id)
+        else favoriteTrackIds.add(track.id)
+        getSharedPreferences("djpdc_library", Context.MODE_PRIVATE).edit()
+            .putStringSet("favorite_track_ids", favoriteTrackIds.map { it.toString() }.toSet())
+            .apply()
+    }
+
     private fun playTrack(track: Track) {
         val activePlayer = controller ?: return
         val index = tracks.indexOfFirst { it.id == track.id }
@@ -286,21 +309,37 @@ class MainActivity : ComponentActivity() {
 }
 
 @androidx.compose.runtime.Composable
-private fun TrackRow(track: Track, enabled: Boolean, onClick: () -> Unit) {
+private fun TrackRow(
+    track: Track,
+    enabled: Boolean,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
+    onClick: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),
         color = Color(0xFF151815),
         shape = RoundedCornerShape(14.dp)
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(track.title, color = Color.White, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                "${track.artist}  ·  ${track.album}",
-                color = Color(0xFF9AA39A),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick)
+                    .padding(vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(track.title, color = Color.White, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    "${track.artist}  ·  ${track.album}",
+                    color = Color(0xFF9AA39A),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Button(onClick = onFavoriteClick) { Text(if (isFavorite) "★" else "☆") }
         }
     }
 }
