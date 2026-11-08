@@ -203,3 +203,23 @@ This is the tested timing/math layer only. It is not yet scheduled against
 Media3 playback, and it does not claim an audible automatic mix. The Android
 executor must sample the timeline, apply both deck gains, and cancel its job
 immediately when the guard fails or the user pauses/stops/changes tracks.
+
+
+### Opt-in Auto DJ playback prototype
+
+The Android main screen now exposes a simple **Start Auto DJ / Stop Auto DJ**
+control. Starting it requires a current local track and both playback decks.
+While enabled, the activity limits Deck A to the current song, selects the next
+candidate only from the current MediaStore snapshot, prepares Deck B, waits for
+Deck B to report active playback, and applies the tested equal-power fade
+timeline. After the fade, it promotes the selected local track to Deck A and
+returns Deck B to standby.
+
+Manual pause, manual next, and choosing another track stop Auto DJ first.
+The Deck B buffering wait is bounded; if it cannot start, Auto DJ stops without
+replacing the current song. The fade also re-checks session and track identity
+while it runs.
+
+This is an early Android integration, not yet device-verified. It uses a simple
+fade only; it does not perform beat matching, BPM synchronization, or use an
+NVIDIA/cloud AI service. Playback is sourced from local MediaStore URIs only.
