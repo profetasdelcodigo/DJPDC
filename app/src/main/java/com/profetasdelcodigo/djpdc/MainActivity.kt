@@ -304,7 +304,7 @@ class MainActivity : ComponentActivity() {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Button(
                                             onClick = { if (autoDjMode == AutoDJMode.ACTIVE) stopAutoDJ("Auto DJ stopped by you.") else startAutoDJ() },
-                                            enabled = controllerReady && deckBController != null && currentTrack != null && tracks.isNotEmpty()
+                                            enabled = controllerReady && deckBController != null && autoDjMode != AutoDJMode.ACTIVE && currentTrack != null && tracks.isNotEmpty()
                                         ) { Text(if (autoDjMode == AutoDJMode.ACTIVE) "Stop Auto DJ" else "Start Auto DJ") }
                                         Text(autoDjMessage, color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
                                     }
@@ -404,14 +404,14 @@ class MainActivity : ComponentActivity() {
                                             val deck = deckBController ?: return@Button
                                             if (deckBIsPlaying) deck.pause() else deck.play()
                                         },
-                                        enabled = deckBController != null && deckBTrack != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBTrack != null
                                     ) { Text(if (deckBIsPlaying) "Pause B" else "Play B") }
                                     Button(
                                         onClick = {
                                             deckBController?.pause()
                                             deckBController?.seekTo(0L)
                                         },
-                                        enabled = deckBController != null && deckBTrack != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBTrack != null
                                     ) { Text("Return B") }
                                 }
                                 Slider(
@@ -419,7 +419,7 @@ class MainActivity : ComponentActivity() {
                                     onValueChange = { fraction ->
                                         if (deckBDurationMs > 0L) deckBController?.seekTo((fraction * deckBDurationMs).toLong())
                                     },
-                                    enabled = deckBController != null && deckBDurationMs > 0L
+                                    enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBDurationMs > 0L
                                 )
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(formatTime(deckBPositionMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
@@ -428,11 +428,11 @@ class MainActivity : ComponentActivity() {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(
                                         onClick = { deckBCueMs = deckBController?.currentPosition?.coerceAtLeast(0L) },
-                                        enabled = deckBController != null && deckBTrack != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBTrack != null
                                     ) { Text("Set B CUE") }
                                     Button(
                                         onClick = { deckBCueMs?.let { deckBController?.seekTo(it) } },
-                                        enabled = deckBController != null && deckBCueMs != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBCueMs != null
                                     ) { Text("Jump B CUE") }
                                 }
                                 Row(
@@ -447,7 +447,7 @@ class MainActivity : ComponentActivity() {
                                             val target = PhaseNudgeMath.adjust(player.currentPosition, -20L, player.duration)
                                             player.seekTo(target)
                                         },
-                                        enabled = deckBController != null && deckBTrack != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBTrack != null
                                     ) { Text("−20 ms") }
                                     Button(
                                         onClick = {
@@ -455,7 +455,7 @@ class MainActivity : ComponentActivity() {
                                             val target = PhaseNudgeMath.adjust(player.currentPosition, 20L, player.duration)
                                             player.seekTo(target)
                                         },
-                                        enabled = deckBController != null && deckBTrack != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckBTrack != null
                                     ) { Text("+20 ms") }
                                 }
                                 Text(
@@ -519,14 +519,14 @@ class MainActivity : ComponentActivity() {
                                                 beatmatchSpeed = speed
                                             }
                                         },
-                                        enabled = deckBController != null && deckATapTempoBpm != null && tapTempoBpm != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null && deckATapTempoBpm != null && tapTempoBpm != null
                                     ) { Text("MATCH B TO A") }
                                     Button(
                                         onClick = {
                                             deckBController?.setPlaybackParameters(PlaybackParameters(1f, 1f))
                                             beatmatchSpeed = null
                                         },
-                                        enabled = deckBController != null
+                                        enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null
                                     ) { Text("RESET SPEED") }
                                 }
                                 Text(
@@ -544,7 +544,7 @@ class MainActivity : ComponentActivity() {
                                     value = deckBVolume,
                                     onValueChange = { deckBVolume = it; applyCrossfade() },
                                     valueRange = 0f..1f,
-                                    enabled = deckBController != null
+                                    enabled = autoDjMode != AutoDJMode.ACTIVE && deckBController != null
                                 )
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text("DECK A VOLUME", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
@@ -555,7 +555,7 @@ class MainActivity : ComponentActivity() {
                                     value = deckAVolume,
                                     onValueChange = { deckAVolume = it; applyCrossfade() },
                                     valueRange = 0f..1f,
-                                    enabled = controllerReady
+                                    enabled = controllerReady && autoDjMode != AutoDJMode.ACTIVE
                                 )
                                 Text("CROSSFADER  ·  A  ↔  B", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                 Slider(
@@ -565,7 +565,7 @@ class MainActivity : ComponentActivity() {
                                         applyCrossfade()
                                     },
                                     valueRange = 0f..1f,
-                                    enabled = controllerReady && deckBController != null
+                                    enabled = controllerReady && deckBController != null && autoDjMode != AutoDJMode.ACTIVE
                                 )
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text("A", color = Color(0xFF9AA39A))
@@ -684,7 +684,7 @@ class MainActivity : ComponentActivity() {
                                         isFavorite = track.id in favoriteTrackIds,
                                         onFavoriteClick = { toggleFavorite(track) },
                                         onClick = { playTrack(track) },
-                                        onLoadDeckB = { loadDeckB(track) }
+                                        onLoadDeckB = { stopAutoDJ("Auto DJ stopped because you loaded Deck B manually."); loadDeckB(track) }
                                     )
                                 }
                             }
@@ -873,7 +873,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private suspend fun runAutoDJLoop() {
-        while (lifecycleScope.coroutineContext.isActive && autoDjSessionState.mode == AutoDJMode.ACTIVE) {
+        while (autoDjSessionState.mode == AutoDJMode.ACTIVE) {
             val playerA = controller ?: break
             val playerB = deckBController ?: break
             val activeTrack = currentTrack ?: break
