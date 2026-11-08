@@ -18,6 +18,7 @@ DJPDC is an Android application built around a local-first audio engine, with an
 - Runtime permission request for local audio access.
 - Local audio-library scan using MediaStore.
 - Track list with title, artist, and album metadata.
+- Album artwork loaded from Android MediaStore and displayed in the now-playing panel, with a branded fallback when artwork is unavailable.
 - Local playback and next-track control using AndroidX Media3.
 - Dedicated MediaSessionService so playback can continue when the activity is no longer visible.
 - MediaController connection between the app interface and the background playback session.
@@ -31,7 +32,7 @@ DJPDC is an Android application built around a local-first audio engine, with an
 
 1. Validate the Android build on CI and a physical device.
 2. Verify background playback service, media notification, lock-screen controls, and queue management.
-3. Add album artwork, playlists, and richer metadata.
+3. Add user-created playlists and richer metadata; album artwork is now integrated.
 4. Build the two-deck engine, BPM analysis, beat matching, and transitions.
 5. Add intelligent track selection and transition suggestions through a secure backend.
 6. Optimize audio performance and test across Android devices.
@@ -50,3 +51,9 @@ A successful workflow run is still required before treating the current source a
 - Live playback progress with elapsed and total time.
 - Seek control to jump within the current track.
 - Upcoming queue preview showing the next tracks in the active library queue.
+
+
+### Album artwork (Beta 0.5)
+- Reads each track album ID from MediaStore.
+- Builds the local album-art content URI and loads artwork with Coil for Compose.
+- Shows a DJPDC fallback tile when a track has no embedded or indexed artwork.
