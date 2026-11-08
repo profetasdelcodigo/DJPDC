@@ -726,7 +726,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri)
+                    val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri, maxSeconds = 20)
                         ?: return@runCatching null
                     AudioBpmAnalyzer.estimateBpm(decoded.first, decoded.second)
                 }.getOrNull()
