@@ -79,6 +79,8 @@ class MainActivity : ComponentActivity() {
     private var deckBTrack by mutableStateOf<Track?>(null)
     private var deckBIsPlaying by mutableStateOf(false)
     private var crossfadePosition by mutableStateOf(0.0f)
+    private var deckAVolume by mutableStateOf(1.0f)
+    private var deckBVolume by mutableStateOf(1.0f)
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -314,6 +316,13 @@ class MainActivity : ComponentActivity() {
                                         },
                                         enabled = deckBController != null && deckBTrack != null
                                     ) { Text(if (deckBIsPlaying) "Pause B" else "Play B") }
+                                    Button(
+                                        onClick = {
+                                            deckBController?.pause()
+                                            deckBController?.seekTo(0L)
+                                        },
+                                        enabled = deckBController != null && deckBTrack != null
+                                    ) { Text("Cue B") }
                                 }
                                 Slider(
                                     value = if (deckBDurationMs > 0L) (deckBPositionMs.toFloat() / deckBDurationMs).coerceIn(0f, 1f) else 0f,
@@ -326,6 +335,28 @@ class MainActivity : ComponentActivity() {
                                     Text(formatTime(deckBPositionMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                     Text(formatTime(deckBDurationMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                 }
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("DECK B VOLUME", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("${(deckBVolume * 100).toInt()}%", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Slider(
+                                    value = deckBVolume,
+                                    onValueChange = { deckBVolume = it; applyCrossfade() },
+                                    valueRange = 0f..1f,
+                                    enabled = deckBController != null
+                                )
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("DECK A VOLUME", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("${(deckAVolume * 100).toInt()}%", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Slider(
+                                    value = deckAVolume,
+                                    onValueChange = { deckAVolume = it; applyCrossfade() },
+                                    valueRange = 0f..1f,
+                                    enabled = controllerReady
+                                )
                                 Text("CROSSFADER  ·  A  ↔  B", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                 Slider(
                                     value = crossfadePosition,
@@ -483,8 +514,8 @@ class MainActivity : ComponentActivity() {
 
     private fun applyCrossfade() {
         val gains = MixerMath.equalPowerCrossfade(crossfadePosition)
-        controller?.volume = gains.deckA
-        deckBController?.volume = gains.deckB
+        controller?.volume = MixerMath.applyChannelVolume(gains.deckA, deckAVolume)
+        deckBController?.volume = MixerMath.applyChannelVolume(gains.deckB, deckBVolume)
     }
 
     private fun loadDeckB(track: Track) {
