@@ -145,15 +145,24 @@ object HarmonicTrackSelector {
     fun select(
         ranked: List<RankedLocalTrack>,
         current: MusicalKeyProfile?,
-        measured: Map<Long, MusicalKeyProfile>
+        measured: Map<Long, MusicalKeyProfile>,
+        currentEnergy: TrackEnergyProfile? = null,
+        measuredEnergy: Map<Long, TrackEnergyProfile> = emptyMap()
     ): RankedLocalTrack? {
         if (ranked.isEmpty()) return null
-        if (current == null) return ranked.first()
+        if (current == null && currentEnergy == null) return ranked.first()
         return ranked.maxWithOrNull(
             compareBy<RankedLocalTrack> { candidate ->
-                val key = measured[candidate.track.id]
-                if (key == null) candidate.score * 0.15
-                else candidate.score * 0.15 + compatibility(current, key) * 3.0
+                var score = candidate.score * 0.15
+                measured[candidate.track.id]?.let { key ->
+                    if (current != null) score += compatibility(current, key) * 3.0
+                }
+                val energy = measuredEnergy[candidate.track.id]
+                if (currentEnergy != null && energy != null) {
+                    score -= kotlin.math.abs(energy.energy - currentEnergy.energy) * 60.0
+                    score -= kotlin.math.abs(energy.transientDensity - currentEnergy.transientDensity) * 12.0
+                }
+                score
             }.thenBy { -it.track.id }
         )
     }
