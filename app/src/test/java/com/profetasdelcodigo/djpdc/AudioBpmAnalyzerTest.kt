@@ -35,6 +35,12 @@ class AudioBpmAnalyzerTest {
     }
 
     @Test
+    fun keepsGenuine50BpmFromBeingDoubled() {
+        val bpm = AudioBpmAnalyzer.estimateBpm(pulseTrack(50), 8_000)
+        assertTrue("Expected tempo near 50 BPM, got $bpm", bpm != null && abs(bpm - 50f) <= 6f)
+    }
+
+    @Test
     fun rejectsSilenceAndShortAudio() {
         assertNull(AudioBpmAnalyzer.estimateBpm(FloatArray(8_000 * 12), 8_000))
         assertNull(AudioBpmAnalyzer.estimateBpm(FloatArray(8_000 * 3), 8_000))
