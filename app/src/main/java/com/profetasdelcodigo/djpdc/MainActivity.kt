@@ -25,6 +25,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -77,6 +86,7 @@ class MainActivity : ComponentActivity() {
     private var deckBDurationMs by mutableStateOf(0L)
     private var showQueue by mutableStateOf(false)
     private var showAdvancedControls by mutableStateOf(false)
+    private var selectedTab by mutableStateOf(DjpdcTab.HOME)
     private val queueTracks = mutableStateListOf<Track>()
     private val playlistNames = mutableStateListOf<String>()
     private var selectedPlaylistName by mutableStateOf<String?>(null)
@@ -224,6 +234,7 @@ class MainActivity : ComponentActivity() {
                         }
                         Text("TU MÚSICA · TU MEZCLA · CONTROL INTELIGENTE", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.labelMedium)
 
+                        if (selectedTab == DjpdcTab.HOME) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = Color(0xFF141522),
@@ -408,8 +419,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                        }
 
-                        if (showAdvancedControls) {
+
+                        if (selectedTab == DjpdcTab.MIXER) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = Color(0xFF141522),
@@ -607,6 +620,7 @@ class MainActivity : ComponentActivity() {
 
                         }
 
+                        if (selectedTab == DjpdcTab.LIBRARY) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("BIBLIOTECA MUSICAL", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.weight(1f))
@@ -722,7 +736,118 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+
+                        }
+
+                        if (selectedTab == DjpdcTab.QUEUE) {
+                            Text("COLA DE REPRODUCCIÓN", color = Color(0xFF62D9E8), style = MaterialTheme.typography.titleLarge)
+                            Text("Canción actual", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.labelMedium)
+                            currentTrack?.let { TrackRow(
+                                track = it,
+                                enabled = controllerReady,
+                                isFavorite = it.id in favoriteTrackIds,
+                                onFavoriteClick = { toggleFavorite(it) },
+                                onClick = { playTrack(it) },
+                                onLoadDeckB = { loadDeckB(it) }
+                            ) }
+                            val upcoming = queueTracks.drop((controller?.currentMediaItemIndex ?: 0) + 1)
+                            if (upcoming.isEmpty()) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color(0xFF141522),
+                                    shape = RoundedCornerShape(24.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF2B2D45))
+                                ) {
+                                    Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("Tu siguiente mezcla empieza aquí", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                                        Text("Añade canciones desde Biblioteca o activa Auto DJ para que DJPDC elija la siguiente pista de tu música local.", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.bodyMedium)
+                                        Button(onClick = { selectedTab = DjpdcTab.LIBRARY }) { Text("Abrir biblioteca") }
+                                    }
+                                }
+                            } else {
+                                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(upcoming, key = { it.id }) { track ->
+                                        TrackRow(
+                                            track = track,
+                                            enabled = controllerReady,
+                                            isFavorite = track.id in favoriteTrackIds,
+                                            onFavoriteClick = { toggleFavorite(track) },
+                                            onClick = { playTrack(track) },
+                                            onLoadDeckB = { loadDeckB(track) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (selectedTab == DjpdcTab.STATS) {
+                            val artistCount = tracks.map { it.artist }.distinct().size
+                            val albumCount = tracks.map { it.album }.distinct().size
+                            val totalDuration = tracks.sumOf { it.durationMs.coerceAtLeast(0L) }
+                            Text("RESUMEN DE TU MÚSICA", color = Color(0xFF62D9E8), style = MaterialTheme.typography.titleLarge)
+                            Text("Datos calculados desde los archivos locales detectados en el teléfono.", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.bodyMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                LibraryStatCard("CANCIONES", tracks.size.toString(), Modifier.weight(1f))
+                                LibraryStatCard("ARTISTAS", artistCount.toString(), Modifier.weight(1f))
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                LibraryStatCard("ÁLBUMES", albumCount.toString(), Modifier.weight(1f))
+                                LibraryStatCard("FAVORITAS", favoriteTrackIds.size.toString(), Modifier.weight(1f))
+                            }
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFF141522),
+                                shape = RoundedCornerShape(24.dp),
+                                border = BorderStroke(1.dp, Color(0xFF2B2D45))
+                            ) {
+                                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("DURACIÓN TOTAL DE LA BIBLIOTECA", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.labelMedium)
+                                    Text(formatTime(totalDuration), color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                                    Text("Tiempo sumado de las canciones encontradas; no representa tiempo escuchado.", color = Color(0xFF85879C), style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
+
                         Text("BACKGROUND AUDIO  ·  AUTO DJ  ·  MANUAL DECKS", color = Color(0xFF6F786F), style = MaterialTheme.typography.labelSmall)
+                        if (selectedTab != DjpdcTab.LIBRARY && selectedTab != DjpdcTab.QUEUE) {
+                            Spacer(Modifier.weight(1f))
+                        }
+                        NavigationBar(
+                            containerColor = Color(0xFF10111B),
+                            contentColor = Color.White
+                        ) {
+                            NavigationBarItem(
+                                selected = selectedTab == DjpdcTab.HOME,
+                                onClick = { selectedTab = DjpdcTab.HOME },
+                                icon = { Icon(Icons.Filled.Home, contentDescription = "Inicio") },
+                                label = { Text("Inicio") }
+                            )
+                            NavigationBarItem(
+                                selected = selectedTab == DjpdcTab.LIBRARY,
+                                onClick = { selectedTab = DjpdcTab.LIBRARY },
+                                icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Biblioteca") },
+                                label = { Text("Música") }
+                            )
+                            NavigationBarItem(
+                                selected = selectedTab == DjpdcTab.MIXER,
+                                onClick = { selectedTab = DjpdcTab.MIXER },
+                                icon = { Icon(Icons.Filled.GraphicEq, contentDescription = "Mezclador") },
+                                label = { Text("Mezcla") }
+                            )
+                            NavigationBarItem(
+                                selected = selectedTab == DjpdcTab.QUEUE,
+                                onClick = { selectedTab = DjpdcTab.QUEUE },
+                                icon = { Icon(Icons.Filled.QueueMusic, contentDescription = "Cola") },
+                                label = { Text("Cola") }
+                            )
+                            NavigationBarItem(
+                                selected = selectedTab == DjpdcTab.STATS,
+                                onClick = { selectedTab = DjpdcTab.STATS },
+                                icon = { Icon(Icons.Filled.Insights, contentDescription = "Estadísticas") },
+                                label = { Text("Datos") }
+                            )
+                        }
+
                     }
                 }
             }
@@ -1185,6 +1310,22 @@ private fun formatTime(milliseconds: Long): String {
     return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
 
+
+@androidx.compose.runtime.Composable
+private fun LibraryStatCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = Color(0xFF171827),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, Color(0xFF2B2D45))
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label, color = Color(0xFF9A9DB5), style = MaterialTheme.typography.labelSmall)
+            Text(value, color = Color.White, style = MaterialTheme.typography.headlineMedium)
+        }
+    }
+}
+
 @androidx.compose.runtime.Composable
 private fun TrackRow(
     track: Track,
@@ -1242,3 +1383,6 @@ private fun TrackRow(
         }
     }
 }
+
+
+private enum class DjpdcTab { HOME, LIBRARY, MIXER, QUEUE, STATS }
