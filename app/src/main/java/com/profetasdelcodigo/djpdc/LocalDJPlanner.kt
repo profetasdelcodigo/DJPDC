@@ -26,7 +26,9 @@ object LocalDJPlanner {
         autoDjEnabled: Boolean,
         transitionDurationMs: Long = 6_000L,
         currentBpm: Float? = null,
-        measuredBpms: Map<Long, Float> = emptyMap()
+        measuredBpms: Map<Long, Float> = emptyMap(),
+        currentEnergyProfile: TrackEnergyProfile? = null,
+        measuredEnergyProfiles: Map<Long, TrackEnergyProfile> = emptyMap()
     ): LocalDJDecision {
         if (!autoDjEnabled) return LocalDJDecision.Disabled()
         if (currentTrackId == null) {
@@ -57,16 +59,33 @@ object LocalDJPlanner {
             currentBpm = currentBpm,
             measuredBpms = measuredBpms
         )
-        val next = bpmSelection?.track ?: ranked.firstOrNull()
-            ?: return LocalDJDecision.NoCandidate(
-                "No matching next track was found in the phone's available music library."
-            )
+        val energyCandidates = if (currentBpm != null && measuredBpms.isNotEmpty()) {
+            ranked.filter { candidate ->
+                val bpm = measuredBpms[candidate.track.id]
+                bpm != null && BeatmatchMath.matchingSpeed(currentBpm, bpm) != null
+            }.ifEmpty { ranked }
+        } else ranked
+        val energySelection = EnergyAwareTrackSelector.select(
+            ranked = energyCandidates,
+            current = currentEnergyProfile,
+            measured = measuredEnergyProfiles
+        )
+        val selected = if (currentEnergyProfile != null) energySelection else bpmSelection?.track ?: ranked.firstOrNull()
+        val next = selected ?: return LocalDJDecision.NoCandidate(
+            "No matching next track was found in the phone's available music library."
+        )
+        val selectedBpmRatio = measuredBpms[next.track.id]?.let { candidateBpm ->
+            currentBpm?.let { BeatmatchMath.matchingSpeed(it, candidateBpm) }
+        }
+        val playbackRatio = if (bpmSelection?.track?.track?.id == next.track.id) {
+            bpmSelection.playbackSpeedRatio
+        } else selectedBpmRatio ?: 1f
 
         val plan = DJTransitionPlan(
             nextTrackId = next.track.id,
             transitionDurationMs = transitionDurationMs,
             nextTrackStartMs = 0L,
-            playbackSpeedRatio = bpmSelection?.playbackSpeedRatio ?: 1f,
+            playbackSpeedRatio = playbackRatio,
             beatAlignmentConfidence = 0f,
             style = DJTransitionStyle.SIMPLE_FADE
         )
@@ -83,10 +102,13 @@ object LocalDJPlanner {
             is DJPlanDecision.Accepted -> LocalDJDecision.Ready(
                 nextTrack = next.track,
                 transition = decision.plan,
-                explanation = if (bpmSelection != null) {
-                    "Selected from the phone library using measured BPM compatibility. A simple fade is proposed; beat alignment is not yet available."
-                } else {
-                    "Selected from the phone library using available title, artist and album metadata. A simple fade is proposed; beat matching is not yet available."
+                explanation = buildString {
+                    append("Selected from the phone's local library.")
+                    if (selectedBpmRatio != null) append(" Tempo compatibility was measured.")
+                    if (currentEnergyProfile != null && measuredEnergyProfiles[next.track.id] != null) {
+                        append(" Energy and transient density were considered for a smoother party flow.")
+                    }
+                    append(" A simple fade is proposed; beat-grid alignment is not yet available.")
                 }
             )
             is DJPlanDecision.Rejected -> LocalDJDecision.NoCandidate(
