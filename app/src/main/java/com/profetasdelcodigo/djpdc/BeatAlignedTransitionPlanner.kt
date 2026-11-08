@@ -35,7 +35,7 @@ object BeatAlignedTransitionPlanner {
         val period = outgoing.beatPeriodMs
         val phase = outgoing.phaseOffsetMs
         if (!period.isFinite() || period <= 0.0 ||
-            !phase.isFinite() || phase !in 0.0 until period
+            !phase.isFinite() || phase < 0.0 || phase >= period
         ) return null
 
         val positionPhase = currentPositionMs.toDouble() % period
