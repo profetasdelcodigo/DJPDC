@@ -322,7 +322,7 @@ class MainActivity : ComponentActivity() {
                                             deckBController?.seekTo(0L)
                                         },
                                         enabled = deckBController != null && deckBTrack != null
-                                    ) { Text("Cue B") }
+                                    ) { Text("Return B") }
                                 }
                                 Slider(
                                     value = if (deckBDurationMs > 0L) (deckBPositionMs.toFloat() / deckBDurationMs).coerceIn(0f, 1f) else 0f,
