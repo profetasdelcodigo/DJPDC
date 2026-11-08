@@ -24,13 +24,14 @@ DJPDC is an Android application built around a local-first audio engine, with an
 - Now-playing state updates and manual library rescan.
 - Instant library search across song titles, artists, and albums.
 - Shuffle playback and repeat modes (off, all, and one).
+- Favorites saved locally and restored between app sessions, with an all-tracks/favorites filter.
 - GitHub Actions workflow to attempt a debug APK build on pushes and pull requests.
 
 ## Roadmap
 
 1. Validate the Android build on CI and a physical device.
 2. Verify background playback service, media notification, lock-screen controls, and queue management.
-3. Add album artwork, playlists, favorites, and richer metadata.
+3. Add album artwork, playlists, and richer metadata.
 4. Build the two-deck engine, BPM analysis, beat matching, and transitions.
 5. Add intelligent track selection and transition suggestions through a secure backend.
 6. Optimize audio performance and test across Android devices.
