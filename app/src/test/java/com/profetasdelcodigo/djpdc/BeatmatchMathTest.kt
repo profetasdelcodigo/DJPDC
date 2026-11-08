@@ -11,9 +11,15 @@ class BeatmatchMathTest {
     }
 
     @Test
-    fun limitsSpeedCorrectionToEightPercent() {
-        assertEquals(1.08f, BeatmatchMath.matchingSpeed(140f, 100f)!!, 0.001f)
-        assertEquals(0.92f, BeatmatchMath.matchingSpeed(80f, 100f)!!, 0.001f)
+    fun rejectsCorrectionsOutsideSupportedEightPercentRange() {
+        assertNull(BeatmatchMath.matchingSpeed(140f, 100f))
+        assertNull(BeatmatchMath.matchingSpeed(80f, 100f))
+    }
+
+    @Test
+    fun acceptsCorrectionsAtSupportedRangeBoundaries() {
+        assertEquals(1.08f, BeatmatchMath.matchingSpeed(108f, 100f)!!, 0.001f)
+        assertEquals(0.92f, BeatmatchMath.matchingSpeed(92f, 100f)!!, 0.001f)
     }
 
     @Test
