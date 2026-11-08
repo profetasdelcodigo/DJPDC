@@ -43,6 +43,7 @@ object AudioBpmAnalyzer {
             .coerceAtMost(onset.size / 2)
         if (maxLag <= minLag) return null
 
+        val scores = DoubleArray(maxLag + 1)
         var bestLag = -1
         var bestScore = Double.NEGATIVE_INFINITY
         for (lag in minLag..maxLag) {
@@ -58,13 +59,24 @@ object AudioBpmAnalyzer {
             }
             val denominator = sqrt(leftEnergy * rightEnergy)
             val score = if (denominator > 0.0) correlation / denominator else 0.0
+            scores[lag] = score
             if (score > bestScore) {
                 bestScore = score
                 bestLag = lag
             }
         }
-        if (bestLag <= 0 || bestScore < 0.08) return null
-        return (60.0 * framesPerSecond / bestLag).toFloat()
-            .takeIf { it in 40f..240f }
+        if (bestLag <= 0 || bestLag >= maxLag || bestScore < 0.08) return null
+        // Refine the integer autocorrelation peak to a fractional frame lag.
+        // This reduces tempo quantization error for slower tempos and short samples.
+        val left = scores[bestLag - 1]
+        val center = scores[bestLag]
+        val right = scores[bestLag + 1]
+        val curvature = left - 2.0 * center + right
+        val peakOffset = if (kotlin.math.abs(curvature) > 1e-12) {
+            (0.5 * (left - right) / curvature).coerceIn(-0.5, 0.5)
+        } else 0.0
+        val refinedLag = bestLag + peakOffset
+        return (60.0 * framesPerSecond / refinedLag).toFloat()
+            .takeIf { it.isFinite() && it in 40f..240f }
     }
 }
