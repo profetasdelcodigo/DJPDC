@@ -319,6 +319,13 @@ class MainActivity : ComponentActivity() {
                                             Text(if (bpmAnalysisA) "Analyzing…" else "AUTO BPM A")
                                         }
                                     }
+                                    val beatA = BeatPulseMath.at(playbackPositionMs, deckATapTempoBpm)
+                                    Text(
+                                        beatA?.let { "PULSE A · ${it.beatInBar}/4 · ${(it.phase * 100).toInt()}%" }
+                                            ?: "PULSE A · awaiting BPM",
+                                        color = Color(0xFF76B900),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(
                                             onClick = { deckACueMs = controller?.currentPosition?.coerceAtLeast(0L) },
@@ -451,6 +458,13 @@ class MainActivity : ComponentActivity() {
                                         Text(if (bpmAnalysisB) "Analyzing…" else "AUTO BPM B")
                                     }
                                 }
+                                val beatB = BeatPulseMath.at(deckBPositionMs, tapTempoBpm)
+                                Text(
+                                    beatB?.let { "PULSE B · ${it.beatInBar}/4 · ${(it.phase * 100).toInt()}%" }
+                                        ?: "PULSE B · awaiting BPM",
+                                    color = Color(0xFF76B900),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(
                                         onClick = {
