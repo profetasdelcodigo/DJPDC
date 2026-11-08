@@ -81,9 +81,9 @@ class MainActivity : ComponentActivity() {
     private val playlistRepository by lazy { PlaylistRepository(this) }
     private var libraryMessage by mutableStateOf("Your local tracks will appear here.")
     private var controller: MediaController? = null
-    private lateinit var controllerFuture: ListenableFuture<MediaController>
+    private var controllerFuture: ListenableFuture<MediaController>? = null
     private var deckBController: MediaController? = null
-    private lateinit var deckBControllerFuture: ListenableFuture<MediaController>
+    private var deckBControllerFuture: ListenableFuture<MediaController>? = null
     private var deckBTrack by mutableStateOf<Track?>(null)
     private var deckBIsPlaying by mutableStateOf(false)
     private var crossfadePosition by mutableStateOf(0.0f)
@@ -198,9 +198,16 @@ class MainActivity : ComponentActivity() {
                         track.album.contains(query, ignoreCase = true))
             }
             MaterialTheme(colorScheme = darkColorScheme(
-                primary = Color(0xFF76B900),
-                background = Color(0xFF0B0D0B),
-                surface = Color(0xFF151815)
+                primary = Color(0xFF9B8CFF),
+                onPrimary = Color(0xFF100D20),
+                secondary = Color(0xFF62D9E8),
+                onSecondary = Color(0xFF06171A),
+                background = Color(0xFF090A12),
+                onBackground = Color(0xFFF4F3FA),
+                surface = Color(0xFF141522),
+                onSurface = Color(0xFFF4F3FA),
+                surfaceVariant = Color(0xFF202136),
+                onSurfaceVariant = Color(0xFFA7A9BC)
             )) {
                 Surface(Modifier.fillMaxSize(), color = Color(0xFF0B0D0B)) {
                     Column(
@@ -212,7 +219,7 @@ class MainActivity : ComponentActivity() {
                             Spacer(Modifier.weight(1f))
                             Text("BETA 0.8", color = Color(0xFF76B900))
                         }
-                        Text("YOUR MUSIC. YOUR MIX.", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelLarge)
+                        Text("YOUR MUSIC. YOUR MIX.", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.labelLarge)
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -236,7 +243,7 @@ class MainActivity : ComponentActivity() {
                                     } else {
                                         Surface(
                                             modifier = Modifier.size(104.dp),
-                                            color = Color(0xFF242B22),
+                                            color = Color(0xFF24243A),
                                             shape = RoundedCornerShape(14.dp)
                                         ) {
                                             Column(
@@ -478,7 +485,7 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Text(
                                     "Manual seek adjustment only · listen and fine-tune by ear",
-                                    color = Color(0xFF6F786F),
+                                    color = Color(0xFF777A91),
                                     style = MaterialTheme.typography.labelSmall
                                 )
                                 Row(
@@ -803,18 +810,30 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun connectDeckBService() {
-        val token = SessionToken(this, ComponentName(this, DeckBPlaybackService::class.java))
-        deckBControllerFuture = MediaController.Builder(this, token).buildAsync()
-        deckBControllerFuture.addListener({
-            try {
-                deckBController = deckBControllerFuture.get().also { mediaController ->
-                    mediaController.addListener(deckBListener)
-                    applyCrossfade()
+        try {
+            val token = SessionToken(this, ComponentName(this, DeckBPlaybackService::class.java))
+            val future = MediaController.Builder(this, token).buildAsync()
+            deckBControllerFuture = future
+            future.addListener({
+                try {
+                    val mediaController = future.get()
+                    if (isFinishing || isDestroyed) {
+                        mediaController.release()
+                        return@addListener
+                    }
+                    deckBController = mediaController.also {
+                        it.addListener(deckBListener)
+                        applyCrossfade()
+                    }
+                } catch (error: Exception) {
+                    deckBController = null
+                    libraryMessage = "The second audio deck could not connect. The main player can still be used."
                 }
-            } catch (_: Exception) {
-                libraryMessage = "Deck B could not start. Deck A remains available."
-            }
-        }, ContextCompat.getMainExecutor(this))
+            }, ContextCompat.getMainExecutor(this))
+        } catch (error: Exception) {
+            deckBController = null
+            libraryMessage = "The second audio deck is unavailable on this device."
+        }
     }
 
     private fun applyCrossfade() {
@@ -837,19 +856,33 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun connectPlaybackService() {
-        val token = SessionToken(this, ComponentName(this, DJPlaybackService::class.java))
-        controllerFuture = MediaController.Builder(this, token).buildAsync()
-        controllerFuture.addListener({
-            try {
-                controller = controllerFuture.get().also { mediaController ->
-                    mediaController.addListener(playerListener)
-                    controllerReady = true
-                    applyCrossfade()
+        try {
+            val token = SessionToken(this, ComponentName(this, DJPlaybackService::class.java))
+            val future = MediaController.Builder(this, token).buildAsync()
+            controllerFuture = future
+            future.addListener({
+                try {
+                    val mediaController = future.get()
+                    if (isFinishing || isDestroyed) {
+                        mediaController.release()
+                        return@addListener
+                    }
+                    controller = mediaController.also {
+                        it.addListener(playerListener)
+                        controllerReady = true
+                        applyCrossfade()
+                    }
+                } catch (error: Exception) {
+                    controller = null
+                    controllerReady = false
+                    libraryMessage = "The audio engine could not connect. Close and reopen DJPDC."
                 }
-            } catch (_: Exception) {
-                libraryMessage = "Playback service could not start. Restart DJPDC and try again."
-            }
-        }, ContextCompat.getMainExecutor(this))
+            }, ContextCompat.getMainExecutor(this))
+        } catch (error: Exception) {
+            controller = null
+            controllerReady = false
+            libraryMessage = "DJPDC could not start its audio engine on this device."
+        }
     }
 
     private fun loadLibrary() {
@@ -866,6 +899,8 @@ class MainActivity : ComponentActivity() {
             }
         } catch (_: SecurityException) {
             libraryMessage = "DJPDC could not access the audio library. Check app permissions."
+        } catch (_: Exception) {
+            libraryMessage = "The music library could not be read. Try rescanning or checking audio permissions."
         }
     }
 
@@ -1129,8 +1164,10 @@ class MainActivity : ComponentActivity() {
         bpmLibraryWarmupJob?.cancel()
         controller?.removeListener(playerListener)
         deckBController?.removeListener(deckBListener)
-        MediaController.releaseFuture(controllerFuture)
-        MediaController.releaseFuture(deckBControllerFuture)
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        deckBControllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        deckBControllerFuture = null
         controller = null
         deckBController = null
         super.onDestroy()
