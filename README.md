@@ -146,3 +146,16 @@ A successful workflow run is still required before treating the current source a
 - The planner deliberately does not claim genre, mood, BPM, or beat compatibility from metadata that is not present. Until reliable beat-grid analysis and playback execution exist, it proposes normal-speed playback from the beginning of the next track.
 - Adds unit tests for library scoping, favorites, exclusions, disabled Auto DJ, missing candidates, current-track validation, and safe transition defaults.
 - This is decision/planning groundwork, not autonomous playback. It is not yet wired to the Media3 players or a cloud AI service, and has not been device-tested.
+
+
+### MediaStore-to-planner bridge
+
+`LocalTrackLibrarySnapshot` converts the current MediaStore `Track` list into
+the metadata-only `LocalTrackEntry` list used by the local selector and planner.
+It retains the original `Track` objects, including their local `contentUri`
+and album-art URI, and provides ID-based lookup so a future playback coordinator
+can resolve a planner decision back to the exact Android media item. Duplicate
+MediaStore IDs are collapsed deterministically (first occurrence wins).
+
+This is an integration boundary only: it does not start playback, schedule a
+crossfade, access remote catalogs, or enable Auto DJ by itself.
