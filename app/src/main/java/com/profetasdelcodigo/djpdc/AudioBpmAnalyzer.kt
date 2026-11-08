@@ -44,7 +44,6 @@ object AudioBpmAnalyzer {
         if (maxLag <= minLag) return null
 
         val scores = DoubleArray(maxLag + 1)
-        var bestLag = -1
         var bestScore = Double.NEGATIVE_INFINITY
         for (lag in minLag..maxLag) {
             var correlation = 0.0
@@ -60,14 +59,23 @@ object AudioBpmAnalyzer {
             val denominator = sqrt(leftEnergy * rightEnergy)
             val score = if (denominator > 0.0) correlation / denominator else 0.0
             scores[lag] = score
-            if (score > bestScore) {
-                bestScore = score
-                bestLag = lag
-            }
+            if (score > bestScore) bestScore = score
         }
-        if (bestLag <= 0 || bestLag >= maxLag || bestScore < 0.08) return null
-        // Refine the integer autocorrelation peak to a fractional frame lag.
-        // This reduces tempo quantization error for slower tempos and short samples.
+        if (bestScore < 0.08) return null
+
+        // A strong autocorrelation peak can occur at twice the beat interval,
+        // making 100 BPM look like 50 BPM. Prefer the earliest credible local
+        // peak when it retains a meaningful fraction of the strongest peak.
+        // This resolves common half-time ambiguity without accepting weak noise.
+        val peakFloor = maxOf(0.12, bestScore * 0.55)
+        val bestLag = (minLag + 1 until maxLag).firstOrNull { lag ->
+            scores[lag] >= peakFloor &&
+                scores[lag] >= scores[lag - 1] &&
+                scores[lag] >= scores[lag + 1]
+        } ?: (minLag..maxLag).maxByOrNull { scores[it] } ?: return null
+        if (bestLag <= 0 || bestLag >= maxLag) return null
+
+        // Refine the selected local peak to a fractional frame lag.
         val left = scores[bestLag - 1]
         val center = scores[bestLag]
         val right = scores[bestLag + 1]
