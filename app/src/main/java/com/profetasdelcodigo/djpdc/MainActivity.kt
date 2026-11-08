@@ -50,6 +50,10 @@ import androidx.media3.session.SessionToken
 import coil.compose.AsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
 
 class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
@@ -86,6 +90,12 @@ class MainActivity : ComponentActivity() {
     private val deckATapTimestampsMs = mutableStateListOf<Long>()
     private var tapTempoBpm by mutableStateOf<Float?>(null)
     private var deckATapTempoBpm by mutableStateOf<Float?>(null)
+    private var autoBpmA by mutableStateOf<Float?>(null)
+    private var autoBpmB by mutableStateOf<Float?>(null)
+    private var bpmAnalysisA by mutableStateOf(false)
+    private var bpmAnalysisB by mutableStateOf(false)
+    private var bpmMessageA by mutableStateOf("")
+    private var bpmMessageB by mutableStateOf("")
     private var beatmatchSpeed by mutableStateOf<Float?>(null)
     private var deckACueMs by mutableStateOf<Long?>(null)
     private var deckBCueMs by mutableStateOf<Long?>(null)
@@ -299,6 +309,12 @@ class MainActivity : ComponentActivity() {
                                             enabled = deckATapTimestampsMs.isNotEmpty()
                                         ) { Text("Reset") }
                                     }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(autoBpmA?.let { "AUTO: ${it.toInt()} BPM" } ?: bpmMessageA.ifBlank { "Automatic BPM: not analyzed" }, color = Color(0xFF9AA39A), modifier = Modifier.weight(1f))
+                                        Button(onClick = { currentTrack?.let { analyzeBpm(it, true) } }, enabled = currentTrack != null && !bpmAnalysisA) {
+                                            Text(if (bpmAnalysisA) "Analyzing…" else "AUTO BPM A")
+                                        }
+                                    }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(
                                             onClick = { deckACueMs = controller?.currentPosition?.coerceAtLeast(0L) },
@@ -424,6 +440,12 @@ class MainActivity : ComponentActivity() {
                                         },
                                         enabled = tapTimestampsMs.isNotEmpty()
                                     ) { Text("Reset") }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(autoBpmB?.let { "AUTO: ${it.toInt()} BPM" } ?: bpmMessageB.ifBlank { "Automatic BPM: not analyzed" }, color = Color(0xFF9AA39A), modifier = Modifier.weight(1f))
+                                    Button(onClick = { deckBTrack?.let { analyzeBpm(it, false) } }, enabled = deckBTrack != null && !bpmAnalysisB) {
+                                        Text(if (bpmAnalysisB) "Analyzing…" else "AUTO BPM B")
+                                    }
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(
@@ -610,6 +632,36 @@ class MainActivity : ComponentActivity() {
                         Text("BACKGROUND AUDIO  ·  AUTO DJ  ·  MANUAL DECKS", color = Color(0xFF6F786F), style = MaterialTheme.typography.labelSmall)
                     }
                 }
+            }
+        }
+    }
+
+    private fun analyzeBpm(track: Track, deckA: Boolean) {
+        if (deckA) {
+            bpmAnalysisA = true
+            bpmMessageA = "Decoding audio…"
+        } else {
+            bpmAnalysisB = true
+            bpmMessageB = "Decoding audio…"
+        }
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri)
+                        ?: return@runCatching null
+                    AudioBpmAnalyzer.estimateBpm(decoded.first, decoded.second)
+                }.getOrNull()
+            }
+            if (deckA) {
+                autoBpmA = result
+                bpmAnalysisA = false
+                bpmMessageA = if (result == null) "Could not estimate BPM" else "Automatic analysis complete"
+                if (result != null) deckATapTempoBpm = result
+            } else {
+                autoBpmB = result
+                bpmAnalysisB = false
+                bpmMessageB = if (result == null) "Could not estimate BPM" else "Automatic analysis complete"
+                if (result != null) tapTempoBpm = result
             }
         }
     }
