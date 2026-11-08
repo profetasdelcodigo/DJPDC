@@ -83,6 +83,8 @@ class MainActivity : ComponentActivity() {
     private var deckBVolume by mutableStateOf(1.0f)
     private val tapTimestampsMs = mutableStateListOf<Long>()
     private var tapTempoBpm by mutableStateOf<Float?>(null)
+    private var deckACueMs by mutableStateOf<Long?>(null)
+    private var deckBCueMs by mutableStateOf<Long?>(null)
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -91,6 +93,7 @@ class MainActivity : ComponentActivity() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val uri = mediaItem?.localConfiguration?.uri ?: return
             deckBTrack = tracks.firstOrNull { it.contentUri == uri } ?: deckBTrack
+            deckBCueMs = null
         }
     }
 
@@ -110,6 +113,7 @@ class MainActivity : ComponentActivity() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val uri = mediaItem?.localConfiguration?.uri ?: return
             currentTrack = tracks.firstOrNull { it.contentUri == uri }
+            deckACueMs = null
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -265,6 +269,16 @@ class MainActivity : ComponentActivity() {
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(
+                                            onClick = { deckACueMs = controller?.currentPosition?.coerceAtLeast(0L) },
+                                            enabled = controllerReady && currentTrack != null
+                                        ) { Text("Set A CUE") }
+                                        Button(
+                                            onClick = { deckACueMs?.let { controller?.seekTo(it) } },
+                                            enabled = controllerReady && deckACueMs != null
+                                        ) { Text("Jump A CUE") }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
                                             onClick = {
                                                 val activePlayer = controller ?: return@Button
                                                 activePlayer.shuffleModeEnabled = !activePlayer.shuffleModeEnabled
@@ -336,6 +350,16 @@ class MainActivity : ComponentActivity() {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(formatTime(deckBPositionMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                     Text(formatTime(deckBDurationMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { deckBCueMs = deckBController?.currentPosition?.coerceAtLeast(0L) },
+                                        enabled = deckBController != null && deckBTrack != null
+                                    ) { Text("Set B CUE") }
+                                    Button(
+                                        onClick = { deckBCueMs?.let { deckBController?.seekTo(it) } },
+                                        enabled = deckBController != null && deckBCueMs != null
+                                    ) { Text("Jump B CUE") }
                                 }
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -555,6 +579,7 @@ class MainActivity : ComponentActivity() {
     private fun loadDeckB(track: Track) {
         val deck = deckBController ?: return
         deckBTrack = track
+        deckBCueMs = null
         deck.setMediaItem(MediaItem.fromUri(track.contentUri))
         deck.prepare()
         applyCrossfade()
