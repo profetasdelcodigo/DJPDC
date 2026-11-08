@@ -103,3 +103,9 @@ A successful workflow run is still required before treating the current source a
 - Adds AUTO BPM A and AUTO BPM B controls; decoding and tempo estimation run on Dispatchers.IO so the interface remains responsive.
 - Successful estimates populate the corresponding BPM value used by the manual beatmatch control. Unsupported formats, short clips, silence, and decode failures report that no estimate could be made.
 - Accuracy varies with rhythm, intros, syncopation, and codec output. Physical-device testing with varied music files is still required; this is an estimate, not a guaranteed beat grid.
+
+
+### Approximate beat pulse
+- Deck A and Deck B display a four-beat pulse ruler derived from each deck's current playback position and measured/estimated BPM.
+- The indicator reports beat-in-bar and fractional progress through the beat.
+- This is a tempo-based reference only: it does not identify the true musical downbeat or guarantee phase alignment. Use listening and manual cue adjustment for precise mixing.
