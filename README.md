@@ -125,3 +125,10 @@ A successful workflow run is still required before treating the current source a
 - Returns estimated onset timestamps and a normalized relative-strength indicator; invalid input is rejected and silence returns an empty result.
 - Adds synthetic transient, silence, and invalid-input unit tests.
 - This is offline onset detection groundwork only. It does not yet determine musical beats, downbeats, tempo, or phase, and is not connected to the playback path or Auto DJ. Accuracy on real mixed music and device performance still require testing.
+
+### Autonomous DJ plan guardrails (controller foundation)
+- Adds a typed transition-plan contract for AI-proposed next-track selection, transition duration, start position, playback-speed ratio, beat-alignment confidence and transition style.
+- Adds a deterministic local validator that requires Auto DJ to be enabled, verifies both active and next-track identity against the accessible local library, and bounds all timing and speed values.
+- When beat-alignment confidence is below the configured threshold, a proposed beat-matched transition is downgraded to a simple fade at normal speed and the start of the next track.
+- Adds unit tests for valid plans, disabled Auto DJ, inaccessible/same tracks, invalid duration and position, unsafe speed, invalid confidence, unknown duration and low-confidence fallback.
+- This is a validated planning contract only. It is not yet connected to Media3 playback, does not start music, and does not mean the AI planner or autonomous mixing is implemented.
