@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.ffmpeg)
     implementation(libs.coil.compose)
     testImplementation(libs.junit)
     debugImplementation(libs.androidx.compose.ui.tooling)
