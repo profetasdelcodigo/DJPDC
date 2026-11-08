@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -43,6 +45,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import coil.compose.AsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
 
@@ -144,18 +147,61 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("NOW PLAYING", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
-                                Text(
-                                    currentTrack?.title ?: "Choose a track",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    currentTrack?.artist ?: if (controllerReady) "DJPDC playback engine ready" else "Connecting playback engine…",
-                                    color = Color(0xFF9AA39A),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    if (currentTrack?.albumArtUri != null) {
+                                        AsyncImage(
+                                            model = currentTrack?.albumArtUri,
+                                            contentDescription = "Album artwork",
+                                            modifier = Modifier.size(104.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Surface(
+                                            modifier = Modifier.size(104.dp),
+                                            color = Color(0xFF242B22),
+                                            shape = RoundedCornerShape(14.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.fillMaxSize(),
+                                                verticalArrangement = Arrangement.Center,
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text("DJPDC", color = Color(0xFF76B900), style = MaterialTheme.typography.titleMedium)
+                                                Text("♪", color = Color.White, style = MaterialTheme.typography.headlineLarge)
+                                            }
+                                        }
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Text(
+                                            currentTrack?.title ?: "Choose a track",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            currentTrack?.artist ?: if (controllerReady) "DJPDC playback engine ready" else "Connecting playback engine…",
+                                            color = Color(0xFF9AA39A),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            currentTrack?.album ?: "LOCAL MUSIC PLAYER",
+                                            color = Color(0xFF76B900),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                                 Slider(
                                     value = if (playbackDurationMs > 0L) (playbackPositionMs.toFloat() / playbackDurationMs).coerceIn(0f, 1f) else 0f,
                                     onValueChange = { fraction ->
