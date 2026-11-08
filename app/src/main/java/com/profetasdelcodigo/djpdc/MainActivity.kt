@@ -72,6 +72,21 @@ class MainActivity : ComponentActivity() {
     private var libraryMessage by mutableStateOf("Your local tracks will appear here.")
     private var controller: MediaController? = null
     private lateinit var controllerFuture: ListenableFuture<MediaController>
+    private var deckBController: MediaController? = null
+    private lateinit var deckBControllerFuture: ListenableFuture<MediaController>
+    private var deckBTrack by mutableStateOf<Track?>(null)
+    private var deckBIsPlaying by mutableStateOf(false)
+    private var crossfadePosition by mutableStateOf(0.0f)
+
+    private val deckBListener = object : Player.Listener {
+        override fun onIsPlayingChanged(playing: Boolean) {
+            deckBIsPlaying = playing
+        }
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val uri = mediaItem?.localConfiguration?.uri ?: return
+            deckBTrack = tracks.firstOrNull { it.contentUri == uri } ?: deckBTrack
+        }
+    }
 
     private val audioPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -103,6 +118,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectPlaybackService()
+        connectDeckBService()
         playlistNames.addAll(playlistRepository.names())
         favoriteTrackIds.addAll(getSharedPreferences("djpdc_library", Context.MODE_PRIVATE)
             .getStringSet("favorite_track_ids", emptySet())
@@ -266,6 +282,50 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFF151815),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Column(
+                                Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("DECK B", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
+                                    Spacer(Modifier.weight(1f))
+                                    Text(
+                                        deckBTrack?.title ?: "No track loaded",
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Button(
+                                        onClick = {
+                                            val deck = deckBController ?: return@Button
+                                            if (deckBIsPlaying) deck.pause() else deck.play()
+                                        },
+                                        enabled = deckBController != null && deckBTrack != null
+                                    ) { Text(if (deckBIsPlaying) "Pause B" else "Play B") }
+                                }
+                                Text("CROSSFADER  ·  A  ↔  B", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                Slider(
+                                    value = crossfadePosition,
+                                    onValueChange = { position ->
+                                        crossfadePosition = position
+                                        applyCrossfade()
+                                    },
+                                    valueRange = 0f..1f,
+                                    enabled = controllerReady && deckBController != null
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("A", color = Color(0xFF9AA39A))
+                                    Text("CENTER", color = Color(0xFF9AA39A))
+                                    Text("B", color = Color(0xFF9AA39A))
+                                }
+                            }
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("YOUR LIBRARY", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.weight(1f))
@@ -374,7 +434,8 @@ class MainActivity : ComponentActivity() {
                                         enabled = controllerReady,
                                         isFavorite = track.id in favoriteTrackIds,
                                         onFavoriteClick = { toggleFavorite(track) },
-                                        onClick = { playTrack(track) }
+                                        onClick = { playTrack(track) },
+                                        onLoadDeckB = { loadDeckB(track) }
                                     )
                                 }
                             }
@@ -387,6 +448,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun connectDeckBService() {
+        val token = SessionToken(this, ComponentName(this, DeckBPlaybackService::class.java))
+        deckBControllerFuture = MediaController.Builder(this, token).buildAsync()
+        deckBControllerFuture.addListener({
+            try {
+                deckBController = deckBControllerFuture.get().also { mediaController ->
+                    mediaController.addListener(deckBListener)
+                    applyCrossfade()
+                }
+            } catch (_: Exception) {
+                libraryMessage = "Deck B could not start. Deck A remains available."
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun applyCrossfade() {
+        val gains = MixerMath.equalPowerCrossfade(crossfadePosition)
+        controller?.volume = gains.deckA
+        deckBController?.volume = gains.deckB
+    }
+
+    private fun loadDeckB(track: Track) {
+        val deck = deckBController ?: return
+        deckBTrack = track
+        deck.setMediaItem(MediaItem.fromUri(track.contentUri))
+        deck.prepare()
+        applyCrossfade()
+    }
+
     private fun connectPlaybackService() {
         val token = SessionToken(this, ComponentName(this, DJPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
@@ -395,6 +485,7 @@ class MainActivity : ComponentActivity() {
                 controller = controllerFuture.get().also { mediaController ->
                     mediaController.addListener(playerListener)
                     controllerReady = true
+                    applyCrossfade()
                 }
             } catch (_: Exception) {
                 libraryMessage = "Playback service could not start. Restart DJPDC and try again."
@@ -456,8 +547,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         controller?.removeListener(playerListener)
+        deckBController?.removeListener(deckBListener)
         MediaController.releaseFuture(controllerFuture)
+        MediaController.releaseFuture(deckBControllerFuture)
         controller = null
+        deckBController = null
         super.onDestroy()
     }
 }
@@ -474,7 +568,8 @@ private fun TrackRow(
     enabled: Boolean,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLoadDeckB: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -499,6 +594,7 @@ private fun TrackRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            Button(onClick = onLoadDeckB, enabled = enabled) { Text("Load B") }
             Button(onClick = onFavoriteClick) { Text(if (isFavorite) "★" else "☆") }
         }
     }
