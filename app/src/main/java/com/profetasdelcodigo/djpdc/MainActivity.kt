@@ -958,7 +958,8 @@ class MainActivity : ComponentActivity() {
                     val frame = AutoDJCrossfadeTimeline.frameAt(
                         android.os.SystemClock.elapsedRealtime() - startedAt,
                         decision.plan.transitionDurationMs
-                    ) ?: run {
+                    )
+                    if (frame == null) {
                         cancelled = true
                         break
                     }
