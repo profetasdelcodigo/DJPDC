@@ -81,6 +81,8 @@ class MainActivity : ComponentActivity() {
     private var crossfadePosition by mutableStateOf(0.0f)
     private var deckAVolume by mutableStateOf(1.0f)
     private var deckBVolume by mutableStateOf(1.0f)
+    private val tapTimestampsMs = mutableStateListOf<Long>()
+    private var tapTempoBpm by mutableStateOf<Float?>(null)
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -334,6 +336,38 @@ class MainActivity : ComponentActivity() {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(formatTime(deckBPositionMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                     Text(formatTime(deckBDurationMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("MANUAL TAP TEMPO", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                        Text(
+                                            tapTempoBpm?.let { "${it.toInt()} BPM" } ?: "Tap 3+ times to measure",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                    }
+                                    Button(
+                                        onClick = {
+                                            val now = android.os.SystemClock.elapsedRealtime()
+                                            val previous = tapTimestampsMs.lastOrNull()
+                                            if (previous != null && now - previous > 2000L) tapTimestampsMs.clear()
+                                            tapTimestampsMs.add(now)
+                                            while (tapTimestampsMs.size > 7) tapTimestampsMs.removeAt(0)
+                                            tapTempoBpm = TapTempo.bpmFromTimestamps(tapTimestampsMs)
+                                        },
+                                        enabled = deckBTrack != null
+                                    ) { Text("TAP") }
+                                    Button(
+                                        onClick = {
+                                            tapTimestampsMs.clear()
+                                            tapTempoBpm = null
+                                        },
+                                        enabled = tapTimestampsMs.isNotEmpty()
+                                    ) { Text("Reset") }
                                 }
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text("DECK B VOLUME", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
