@@ -110,6 +110,8 @@ class MainActivity : ComponentActivity() {
             deckBCueMs = null
             tapTimestampsMs.clear()
             tapTempoBpm = null
+            autoBpmB = null
+            bpmMessageB = ""
             beatmatchSpeed = null
             deckBController?.setPlaybackParameters(PlaybackParameters(1f, 1f))
         }
@@ -134,6 +136,8 @@ class MainActivity : ComponentActivity() {
             deckACueMs = null
             deckATapTimestampsMs.clear()
             deckATapTempoBpm = null
+            autoBpmA = null
+            bpmMessageA = ""
             beatmatchSpeed = null
             deckBController?.setPlaybackParameters(PlaybackParameters(1f, 1f))
         }
@@ -653,15 +657,19 @@ class MainActivity : ComponentActivity() {
                 }.getOrNull()
             }
             if (deckA) {
-                autoBpmA = result
                 bpmAnalysisA = false
-                bpmMessageA = if (result == null) "Could not estimate BPM" else "Automatic analysis complete"
-                if (result != null) deckATapTempoBpm = result
+                if (currentTrack?.contentUri == track.contentUri) {
+                    autoBpmA = result
+                    bpmMessageA = if (result == null) "Could not estimate BPM" else "Automatic analysis complete · estimate"
+                    if (result != null) deckATapTempoBpm = result
+                }
             } else {
-                autoBpmB = result
                 bpmAnalysisB = false
-                bpmMessageB = if (result == null) "Could not estimate BPM" else "Automatic analysis complete"
-                if (result != null) tapTempoBpm = result
+                if (deckBTrack?.contentUri == track.contentUri) {
+                    autoBpmB = result
+                    bpmMessageB = if (result == null) "Could not estimate BPM" else "Automatic analysis complete · estimate"
+                    if (result != null) tapTempoBpm = result
+                }
             }
         }
     }
