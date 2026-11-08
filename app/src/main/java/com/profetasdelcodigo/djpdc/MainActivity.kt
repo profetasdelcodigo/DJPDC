@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity() {
     private var repeatMode by mutableStateOf(Player.REPEAT_MODE_OFF)
     private var playbackPositionMs by mutableStateOf(0L)
     private var playbackDurationMs by mutableStateOf(0L)
+    private var deckBPositionMs by mutableStateOf(0L)
+    private var deckBDurationMs by mutableStateOf(0L)
     private var showQueue by mutableStateOf(false)
     private val queueTracks = mutableStateListOf<Track>()
     private val playlistNames = mutableStateListOf<String>()
@@ -135,6 +137,11 @@ class MainActivity : ComponentActivity() {
                         playbackPositionMs = player.currentPosition.coerceAtLeast(0L)
                         playbackDurationMs = player.duration.takeIf { it > 0L } ?: 0L
                     }
+                    val deckBPlayer = deckBController
+                    if (deckBPlayer != null) {
+                        deckBPositionMs = deckBPlayer.currentPosition.coerceAtLeast(0L)
+                        deckBDurationMs = deckBPlayer.duration.takeIf { it > 0L } ?: 0L
+                    }
                     delay(500)
                 }
             }
@@ -160,7 +167,7 @@ class MainActivity : ComponentActivity() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("DJPDC", style = MaterialTheme.typography.headlineLarge, color = Color.White)
                             Spacer(Modifier.weight(1f))
-                            Text("BETA 0.6", color = Color(0xFF76B900))
+                            Text("BETA 0.8", color = Color(0xFF76B900))
                         }
                         Text("YOUR MUSIC. YOUR MIX.", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelLarge)
 
@@ -307,6 +314,17 @@ class MainActivity : ComponentActivity() {
                                         },
                                         enabled = deckBController != null && deckBTrack != null
                                     ) { Text(if (deckBIsPlaying) "Pause B" else "Play B") }
+                                }
+                                Slider(
+                                    value = if (deckBDurationMs > 0L) (deckBPositionMs.toFloat() / deckBDurationMs).coerceIn(0f, 1f) else 0f,
+                                    onValueChange = { fraction ->
+                                        if (deckBDurationMs > 0L) deckBController?.seekTo((fraction * deckBDurationMs).toLong())
+                                    },
+                                    enabled = deckBController != null && deckBDurationMs > 0L
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(formatTime(deckBPositionMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                    Text(formatTime(deckBDurationMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                 }
                                 Text("CROSSFADER  ·  A  ↔  B", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                 Slider(
