@@ -1156,6 +1156,15 @@ class MainActivity : ComponentActivity() {
         if (autoBpmA == null && !bpmAnalysisA) {
             analyzeBpm(selected, deckA = true)
         }
+        if (measuredEnergyByTrackId[selected.id] == null) {
+            lifecycleScope.launch {
+                measureEnergy(selected)?.let { profile ->
+                    if (currentTrack?.contentUri == selected.contentUri) {
+                        saveEnergyProfile(selected, profile)
+                    }
+                }
+            }
+        }
         warmBpmCandidates(selected.id)
         autoDjJob = lifecycleScope.launch {
             runAutoDJLoop()
