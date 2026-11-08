@@ -132,3 +132,10 @@ A successful workflow run is still required before treating the current source a
 - When beat-alignment confidence is below the configured threshold, a proposed beat-matched transition is downgraded to a simple fade at normal speed and the start of the next track.
 - Adds unit tests for valid plans, disabled Auto DJ, inaccessible/same tracks, invalid duration and position, unsafe speed, invalid confidence, unknown duration and low-confidence fallback.
 - This is a validated planning contract only. It is not yet connected to Media3 playback, does not start music, and does not mean the AI planner or autonomous mixing is implemented.
+
+### Local music library only — product requirement
+- Auto DJ must select and play only audio tracks available in the user's permitted Android music library (MediaStore).
+- No silent fallback to streaming services, YouTube, Spotify, radio or remote audio catalogs. If there is no suitable local match, explain that and offer the closest available tracks on the phone.
+- Re-scan the library only with permission and handle removed or unreadable files gracefully.
+- Audio analysis stays on-device by default. Cloud planning receives only the minimum metadata required; audio uploads or external library sharing require separate explicit consent.
+- Users may optionally limit selection to favorites or a chosen playlist.
