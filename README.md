@@ -109,3 +109,9 @@ A successful workflow run is still required before treating the current source a
 - Deck A and Deck B display a four-beat pulse ruler derived from each deck's current playback position and measured/estimated BPM.
 - The indicator reports beat-in-bar and fractional progress through the beat.
 - This is a tempo-based reference only: it does not identify the true musical downbeat or guarantee phase alignment. Use listening and manual cue adjustment for precise mixing.
+
+
+### Manual Deck B phase nudge
+- Adds small ±20 ms seek adjustments for Deck B so a user can manually refine the relative timing while listening.
+- Nudge calculations clamp to the track boundaries and are covered by unit tests.
+- This is a seek-based manual aid, not automatic transient detection, downbeat detection, phase lock, or guaranteed synchronization. Seek precision depends on the media format and Android playback pipeline.
