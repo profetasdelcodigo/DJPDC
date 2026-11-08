@@ -1212,6 +1212,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        if (measuredMusicalKeyByTrackId[selected.id] == null) {
+            lifecycleScope.launch {
+                measureMusicalKey(selected)?.let { profile ->
+                    if (currentTrack?.contentUri == selected.contentUri) {
+                        saveMusicalKey(selected, profile)
+                    }
+                }
+            }
+        }
         warmBpmCandidates(selected.id)
         autoDjJob = lifecycleScope.launch {
             runAutoDJLoop()
