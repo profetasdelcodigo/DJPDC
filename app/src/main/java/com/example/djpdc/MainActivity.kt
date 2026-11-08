@@ -298,9 +298,16 @@ class MainActivity : ComponentActivity() {
                                             enabled = controllerReady && currentTrack != null
                                         ) { Text(if (isPlaying) "Pause" else "Play") }
                                         Button(
-                                            onClick = { stopAutoDJ("Auto DJ stopped because you selected Next."); controller?.seekToNextMediaItem() },
-                                            enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
+                                            onClick = { skipToNextTrack() },
+                                            enabled = controllerReady && (
+                                                (controller?.mediaItemCount ?: 0) > 1 ||
+                                                    (autoDjMode == AutoDJMode.ACTIVE && tracks.size > 1)
+                                                )
                                         ) { Text("Next") }
+                                        Button(
+                                            onClick = { stopPlayback() },
+                                            enabled = controllerReady && currentTrack != null
+                                        ) { Text("Stop") }
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Button(
@@ -831,6 +838,33 @@ class MainActivity : ComponentActivity() {
         activePlayer.setMediaItems(activeQueue.map { MediaItem.fromUri(it.contentUri) }, index, 0L)
         activePlayer.prepare()
         activePlayer.play()
+    }
+
+    private fun stopPlayback() {
+        stopAutoDJ("Auto DJ stopped because playback was stopped.")
+        controller?.pause()
+        controller?.seekTo(0L)
+    }
+
+    private fun skipToNextTrack() {
+        val activePlayer = controller ?: return
+        if (autoDjMode == AutoDJMode.ACTIVE) {
+            val activeQueue = queueTracks.ifEmpty { tracks.toList() }
+            val currentIndex = activeQueue.indexOfFirst { it.id == currentTrack?.id }
+            val nextTrack = if (currentIndex >= 0 && currentIndex + 1 < activeQueue.size) {
+                activeQueue[currentIndex + 1]
+            } else {
+                activeQueue.firstOrNull { it.id != currentTrack?.id }
+            }
+            if (nextTrack != null) {
+                playTrack(nextTrack)
+            } else {
+                stopAutoDJ("No other local track is available.")
+            }
+            return
+        }
+        stopAutoDJ("Auto DJ stopped because you selected Next.")
+        activePlayer.seekToNextMediaItem()
     }
 
     private fun startAutoDJ() {
