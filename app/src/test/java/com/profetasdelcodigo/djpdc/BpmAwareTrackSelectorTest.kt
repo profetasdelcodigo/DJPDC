@@ -37,7 +37,7 @@ class BpmAwareTrackSelectorTest {
         val result = BpmAwareTrackSelector.select(
             ranked = ranked,
             currentBpm = 120f,
-            measuredBpms = mapOf(2L to 110f)
+            measuredBpms = mapOf(2L to 115f)
         )
         assertEquals(2L, result?.track?.track?.id)
     }
