@@ -96,3 +96,10 @@ A successful workflow run is still required before treating the current source a
 - Adds a pure Kotlin PCM tempo estimator based on short-window RMS energy, positive energy changes, and onset-envelope autocorrelation.
 - Includes synthetic 100 BPM and 120 BPM audio tests, plus silence, short-input, invalid-rate, and non-finite sample checks.
 - The estimator accepts decoded mono PCM samples; MediaExtractor/MediaCodec decoding and automatic per-track UI integration are not yet connected. Do not treat this as automatic BPM detection in the app until that integration is complete and device-tested.
+
+
+### Automatic BPM decoding integration
+- Adds an Android MediaExtractor/MediaCodec decoder that reads up to 45 seconds of a selected local audio track and converts decoded PCM to mono samples.
+- Adds AUTO BPM A and AUTO BPM B controls; decoding and tempo estimation run on Dispatchers.IO so the interface remains responsive.
+- Successful estimates populate the corresponding BPM value used by the manual beatmatch control. Unsupported formats, short clips, silence, and decode failures report that no estimate could be made.
+- Accuracy varies with rhythm, intros, syncopation, and codec output. Physical-device testing with varied music files is still required; this is an estimate, not a guaranteed beat grid.
