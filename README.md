@@ -223,3 +223,16 @@ while it runs.
 This is an early Android integration, not yet device-verified. It uses a simple
 fade only; it does not perform beat matching, BPM synchronization, or use an
 NVIDIA/cloud AI service. Playback is sourced from local MediaStore URIs only.
+
+
+### Simplified default interface
+
+The main screen now keeps the everyday controls visible: Play/Pause, Next and
+Start/Stop Auto DJ. BPM tools, cue points, Deck B controls, channel faders and
+the crossfader are grouped behind an **Advanced controls** disclosure, closed
+by default. Opening the advanced section does not enable Auto DJ or change
+playback. While Auto DJ is active, conflicting manual Deck B and mixer controls
+are disabled; the Stop Auto DJ control remains available.
+
+This is a UI organization improvement, not evidence of physical-device
+playback validation.
