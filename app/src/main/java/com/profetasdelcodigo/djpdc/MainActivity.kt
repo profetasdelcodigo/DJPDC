@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -46,6 +48,9 @@ class MainActivity : ComponentActivity() {
     private val tracks = mutableStateListOf<Track>()
     private var currentTrack by mutableStateOf<Track?>(null)
     private var isPlaying by mutableStateOf(false)
+    private var searchQuery by mutableStateOf("")
+    private var shuffleEnabled by mutableStateOf(false)
+    private var repeatMode by mutableStateOf(Player.REPEAT_MODE_OFF)
     private var libraryMessage by mutableStateOf("Your local tracks will appear here.")
     private var controller: MediaController? = null
     private lateinit var controllerFuture: ListenableFuture<MediaController>
@@ -67,6 +72,14 @@ class MainActivity : ComponentActivity() {
             val uri = mediaItem?.localConfiguration?.uri ?: return
             currentTrack = tracks.firstOrNull { it.contentUri == uri }
         }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            shuffleEnabled = shuffleModeEnabled
+        }
+
+        override fun onRepeatModeChanged(repeatModeValue: Int) {
+            repeatMode = repeatModeValue
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +89,12 @@ class MainActivity : ComponentActivity() {
         if (permissionGranted) loadLibrary()
 
         setContent {
+            val filteredTracks = tracks.filter { track ->
+                val query = searchQuery.trim()
+                query.isEmpty() || track.title.contains(query, ignoreCase = true) ||
+                    track.artist.contains(query, ignoreCase = true) ||
+                    track.album.contains(query, ignoreCase = true)
+            }
             MaterialTheme(colorScheme = darkColorScheme(
                 primary = Color(0xFF76B900),
                 background = Color(0xFF0B0D0B),
@@ -112,7 +131,7 @@ class MainActivity : ComponentActivity() {
                                     color = Color(0xFF9AA39A),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(
                                         onClick = {
                                             val activePlayer = controller ?: return@Button
@@ -125,6 +144,30 @@ class MainActivity : ComponentActivity() {
                                         onClick = { controller?.seekToNextMediaItem() },
                                         enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
                                     ) { Text("Next") }
+                                    Button(
+                                        onClick = {
+                                            val activePlayer = controller ?: return@Button
+                                            activePlayer.shuffleModeEnabled = !activePlayer.shuffleModeEnabled
+                                        },
+                                        enabled = controllerReady
+                                    ) { Text(if (shuffleEnabled) "Shuffle ON" else "Shuffle") }
+                                    Button(
+                                        onClick = {
+                                            val activePlayer = controller ?: return@Button
+                                            activePlayer.repeatMode = when (activePlayer.repeatMode) {
+                                                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                                                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                                                else -> Player.REPEAT_MODE_OFF
+                                            }
+                                        },
+                                        enabled = controllerReady
+                                    ) {
+                                        Text(when (repeatMode) {
+                                            Player.REPEAT_MODE_ALL -> "Repeat ALL"
+                                            Player.REPEAT_MODE_ONE -> "Repeat ONE"
+                                            else -> "Repeat OFF"
+                                        })
+                                    }
                                 }
                             }
                         }
@@ -136,18 +179,35 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = { loadLibrary() }, enabled = permissionGranted) { Text("Scan") }
                         }
 
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            enabled = permissionGranted,
+                            placeholder = { Text("Search songs, artists or albums") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF76B900),
+                                cursorColor = Color(0xFF76B900),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+
                         if (!permissionGranted) {
                             Text("Allow DJPDC to read audio files stored on this device.", color = Color(0xFFADB5AD))
                             Button(onClick = { requestAudioPermission() }) { Text("Grant music access") }
                         } else if (tracks.isEmpty()) {
                             Text(libraryMessage, color = Color(0xFFADB5AD))
                             Button(onClick = { loadLibrary() }) { Text("Rescan library") }
+                        } else if (filteredTracks.isEmpty()) {
+                            Text("No tracks match your search.", color = Color(0xFFADB5AD))
                         } else {
                             LazyColumn(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                items(tracks, key = { it.id }) { track ->
+                                items(filteredTracks, key = { it.id }) { track ->
                                     TrackRow(
                                         track = track,
                                         enabled = controllerReady,
