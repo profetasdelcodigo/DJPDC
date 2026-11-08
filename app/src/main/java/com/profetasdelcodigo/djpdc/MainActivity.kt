@@ -425,6 +425,34 @@ class MainActivity : ComponentActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    Text("PHASE NUDGE B", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                    Button(
+                                        onClick = {
+                                            val player = deckBController ?: return@Button
+                                            val target = PhaseNudgeMath.adjust(player.currentPosition, -20L, player.duration)
+                                            player.seekTo(target)
+                                        },
+                                        enabled = deckBController != null && deckBTrack != null
+                                    ) { Text("−20 ms") }
+                                    Button(
+                                        onClick = {
+                                            val player = deckBController ?: return@Button
+                                            val target = PhaseNudgeMath.adjust(player.currentPosition, 20L, player.duration)
+                                            player.seekTo(target)
+                                        },
+                                        enabled = deckBController != null && deckBTrack != null
+                                    ) { Text("+20 ms") }
+                                }
+                                Text(
+                                    "Manual seek adjustment only · listen and fine-tune by ear",
+                                    color = Color(0xFF6F786F),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
                                     Column(Modifier.weight(1f)) {
                                         Text("MANUAL TAP TEMPO", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                         Text(
