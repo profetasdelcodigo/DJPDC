@@ -139,3 +139,10 @@ A successful workflow run is still required before treating the current source a
 - Re-scan the library only with permission and handle removed or unreadable files gracefully.
 - Audio analysis stays on-device by default. Cloud planning receives only the minimum metadata required; audio uploads or external library sharing require separate explicit consent.
 - Users may optionally limit selection to favorites or a chosen playlist.
+
+### Local-library selection and conservative Auto DJ planner groundwork
+- Adds a deterministic candidate ranker that searches only the supplied local-library metadata (title, artist, album), can prioritize favorites, honors explicit playlist scopes, excludes the current track, and returns no candidate when there is no local metadata match.
+- Adds a conservative local decision planner that proposes a different accessible local track and a bounded simple-fade transition only when Auto DJ is enabled.
+- The planner deliberately does not claim genre, mood, BPM, or beat compatibility from metadata that is not present. Until reliable beat-grid analysis and playback execution exist, it proposes normal-speed playback from the beginning of the next track.
+- Adds unit tests for library scoping, favorites, exclusions, disabled Auto DJ, missing candidates, current-track validation, and safe transition defaults.
+- This is decision/planning groundwork, not autonomous playback. It is not yet wired to the Media3 players or a cloud AI service, and has not been device-tested.
