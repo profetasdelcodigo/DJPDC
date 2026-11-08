@@ -1,15 +1,17 @@
 # DJPDC
 
-**AI-powered Android music player and hybrid DJ.**
+**AI-first autonomous Android DJ.**
 
-DJPDC is an Android application built around a local-first audio engine, with an optional AI layer for music-library analysis and intelligent mixing.
+DJPDC is designed so the AI handles the DJ work end to end. The default experience will be natural-language requests and simple playback controls—not a professional DJ panel. Decks, BPM, cue points, EQ, crossfader and transitions are internal tools managed by the local engine. See [the autonomous DJ product specification](docs/AUTONOMOUS_DJ_SPEC.md).
 
 ## Product direction
 
 - Native Android app using Kotlin and Jetpack Compose.
 - Local music discovery through Android MediaStore and explicit user permission.
-- Hybrid experience: everyday music player, assisted Auto DJ, and future manual two-deck controls.
-- Playback and timing-sensitive DSP run on-device; cloud AI is not part of the real-time audio path.
+- AI-first experience: the user describes what they want; Auto DJ selects tracks and manages transitions. Advanced manual controls are optional and hidden by default.
+- Playback, mixing and timing-sensitive DSP run on-device; cloud AI plans and reasons but is never in the real-time audio path.
+- Auto DJ requires an explicit user enable action and always yields to Pause, Stop, Auto DJ Off and manual override.
+- The AI-first product direction is specified in `docs/AUTONOMOUS_DJ_SPEC.md`; this is a target architecture, not a claim that autonomous AI mixing is already implemented.
 - NVIDIA AI services will be accessed only through a secure backend. Never place API keys in the Android app.
 
 ## Implemented
@@ -36,8 +38,10 @@ DJPDC is an Android application built around a local-first audio engine, with an
 2. Verify background playback service, media notification, lock-screen controls, and queue management.
 3. Add playlist editing (rename, remove tracks, delete playlists) and richer metadata; basic local playlists and album artwork are integrated.
 4. Add BPM analysis, beat matching, and smoother transitions to the two-deck playback foundation.
-5. Add intelligent track selection and transition suggestions through a secure backend.
-6. Optimize audio performance and test across Android devices.
+5. Define a validated local DJ controller API and deterministic transition executor with safe fallbacks.
+6. Build beat-grid/downbeat confidence and track-structure analysis from local audio.
+7. Add the AI planner through a secure backend, with local fallback and natural-language controls.
+8. Hide professional DJ controls in the default UI; validate end-to-end autonomous operation on physical Android devices.
 
 ## Build
 
