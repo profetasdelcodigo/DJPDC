@@ -28,7 +28,9 @@ object LocalDJPlanner {
         currentBpm: Float? = null,
         measuredBpms: Map<Long, Float> = emptyMap(),
         currentEnergyProfile: TrackEnergyProfile? = null,
-        measuredEnergyProfiles: Map<Long, TrackEnergyProfile> = emptyMap()
+        measuredEnergyProfiles: Map<Long, TrackEnergyProfile> = emptyMap(),
+        currentMusicalKey: MusicalKeyProfile? = null,
+        measuredMusicalKeys: Map<Long, MusicalKeyProfile> = emptyMap()
     ): LocalDJDecision {
         if (!autoDjEnabled) return LocalDJDecision.Disabled()
         if (currentTrackId == null) {
@@ -65,12 +67,16 @@ object LocalDJPlanner {
                 bpm != null && BeatmatchMath.matchingSpeed(currentBpm, bpm) != null
             }.ifEmpty { ranked }
         } else ranked
-        val energySelection = EnergyAwareTrackSelector.select(
+        val partyFlowSelection = HarmonicTrackSelector.select(
             ranked = energyCandidates,
-            current = currentEnergyProfile,
-            measured = measuredEnergyProfiles
+            current = currentMusicalKey,
+            measured = measuredMusicalKeys,
+            currentEnergy = currentEnergyProfile,
+            measuredEnergy = measuredEnergyProfiles
         )
-        val selected = if (currentEnergyProfile != null) energySelection else bpmSelection?.track ?: ranked.firstOrNull()
+        val selected = if (currentMusicalKey != null || currentEnergyProfile != null) {
+            partyFlowSelection
+        } else bpmSelection?.track ?: ranked.firstOrNull()
         val next = selected ?: return LocalDJDecision.NoCandidate(
             "No matching next track was found in the phone's available music library."
         )
@@ -107,6 +113,9 @@ object LocalDJPlanner {
                     if (selectedBpmRatio != null) append(" Tempo compatibility was measured.")
                     if (currentEnergyProfile != null && measuredEnergyProfiles[next.track.id] != null) {
                         append(" Energy and transient density were considered for a smoother party flow.")
+                    }
+                    if (currentMusicalKey != null && measuredMusicalKeys[next.track.id] != null) {
+                        append(" Harmonic compatibility was considered.")
                     }
                     append(" A simple fade is proposed; beat-grid alignment is not yet available.")
                 }
