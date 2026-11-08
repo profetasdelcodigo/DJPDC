@@ -67,6 +67,14 @@ class LocalDJPlannerTest {
     }
 
     @Test
+    fun zeroSelectionLimitReturnsNoCandidate() {
+        val result = LocalDJPlanner.proposeNext(
+            library, 1L, LocalTrackSelectionRequest(limit = 0), true
+        )
+        assertTrue(result is LocalDJDecision.NoCandidate)
+    }
+
+    @Test
     fun transitionProposalUsesConservativeSimpleFade() {
         val result = LocalDJPlanner.proposeNext(
             library, 1L, LocalTrackSelectionRequest(), true
