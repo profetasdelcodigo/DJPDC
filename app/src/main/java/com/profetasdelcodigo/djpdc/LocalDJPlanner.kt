@@ -46,7 +46,12 @@ object LocalDJPlanner {
             allowedTrackIds = request.allowedTrackIds?.intersect(availableIds) ?: availableIds,
             excludedTrackIds = request.excludedTrackIds + currentTrackId
         )
-        val ranked = LocalTrackSelector.rank(library, scopedRequest)
+        // Auto DJ asks for one final result, but BPM matching needs a wider
+        // candidate pool so it can compare several already-ranked local tracks.
+        val ranked = LocalTrackSelector.rank(
+            library,
+            scopedRequest.copy(limit = maxOf(request.limit, minOf(library.size, 20)))
+        )
         val bpmSelection = BpmAwareTrackSelector.select(
             ranked = ranked,
             currentBpm = currentBpm,
