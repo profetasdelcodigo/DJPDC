@@ -50,6 +50,8 @@ import androidx.media3.session.SessionToken
 import coil.compose.AsyncImage
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -99,6 +101,10 @@ class MainActivity : ComponentActivity() {
     private var beatmatchSpeed by mutableStateOf<Float?>(null)
     private var deckACueMs by mutableStateOf<Long?>(null)
     private var deckBCueMs by mutableStateOf<Long?>(null)
+    private var autoDjMode by mutableStateOf(AutoDJMode.OFF)
+    private var autoDjMessage by mutableStateOf("Auto DJ is off. Start it when a local track is playing.")
+    private var autoDjSessionState = AutoDJSessionState()
+    private var autoDjJob: Job? = null
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -283,15 +289,24 @@ class MainActivity : ComponentActivity() {
                                         Button(
                                             onClick = {
                                                 val activePlayer = controller ?: return@Button
-                                                if (isPlaying) activePlayer.pause()
-                                                else if (currentTrack != null) activePlayer.play()
+                                                if (isPlaying) {
+                                                    stopAutoDJ("Auto DJ stopped because playback was paused manually.")
+                                                    activePlayer.pause()
+                                                } else if (currentTrack != null) activePlayer.play()
                                             },
                                             enabled = controllerReady && currentTrack != null
                                         ) { Text(if (isPlaying) "Pause" else "Play") }
                                         Button(
-                                            onClick = { controller?.seekToNextMediaItem() },
+                                            onClick = { stopAutoDJ("Auto DJ stopped because you selected Next."); controller?.seekToNextMediaItem() },
                                             enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
                                         ) { Text("Next") }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Button(
+                                            onClick = { if (autoDjMode == AutoDJMode.ACTIVE) stopAutoDJ("Auto DJ stopped by you.") else startAutoDJ() },
+                                            enabled = controllerReady && deckBController != null && currentTrack != null && tracks.isNotEmpty()
+                                        ) { Text(if (autoDjMode == AutoDJMode.ACTIVE) "Stop Auto DJ" else "Start Auto DJ") }
+                                        Text(autoDjMessage, color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Column(Modifier.weight(1f)) {
@@ -791,6 +806,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun playTrack(track: Track) {
+        stopAutoDJ("Auto DJ stopped because you selected a track manually.")
         val activePlayer = controller ?: return
         val activeQueue = selectedPlaylistName?.let { name ->
             val ids = playlistRepository.trackIds(name)
@@ -806,6 +822,165 @@ class MainActivity : ComponentActivity() {
         activePlayer.play()
     }
 
+    private fun startAutoDJ() {
+        val activePlayer = controller
+        val deck = deckBController
+        val selected = currentTrack
+        if (activePlayer == null || deck == null || selected == null || !tracks.any { it.id == selected.id }) {
+            autoDjMessage = "Start a song from your phone library first."
+            return
+        }
+        autoDjJob?.cancel()
+        val enabled = AutoDJSessionPolicy.apply(
+            AutoDJSessionState(currentTrackId = selected.id),
+            AutoDJUserCommand.ENABLE
+        ) as AutoDJGateDecision.Updated
+        autoDjSessionState = enabled.state
+        autoDjSessionState = AutoDJCoordinator.attachCurrentTrack(
+            autoDjSessionState,
+            selected.id,
+            tracks.map { it.id }.toSet()
+        ) ?: run {
+            stopAutoDJ("The current track is not available in the local library.")
+            return
+        }
+        // Auto DJ owns the queue while active; retain the current playback position.
+        activePlayer.setMediaItem(MediaItem.fromUri(selected.contentUri), activePlayer.currentPosition.coerceAtLeast(0L))
+        activePlayer.prepare()
+        activePlayer.play()
+        autoDjMode = AutoDJMode.ACTIVE
+        autoDjMessage = "Choosing only from music stored on this phone."
+        autoDjJob = lifecycleScope.launch {
+            runAutoDJLoop()
+        }
+    }
+
+    private fun stopAutoDJ(message: String) {
+        autoDjJob?.cancel()
+        autoDjJob = null
+        autoDjSessionState = (AutoDJSessionPolicy.apply(
+            autoDjSessionState,
+            AutoDJUserCommand.DISABLE
+        ) as AutoDJGateDecision.Updated).state
+        autoDjMode = AutoDJMode.OFF
+        autoDjMessage = message
+        // Restore ordinary deck gains and silence the standby deck.
+        deckBController?.pause()
+        deckBController?.volume = 0f
+        controller?.volume = deckAVolume.coerceIn(0f, 1f)
+        crossfadePosition = 0f
+        deckBTrack = null
+    }
+
+    private suspend fun runAutoDJLoop() {
+        while (lifecycleScope.coroutineContext.isActive && autoDjSessionState.mode == AutoDJMode.ACTIVE) {
+            val playerA = controller ?: break
+            val playerB = deckBController ?: break
+            val activeTrack = currentTrack ?: break
+            if (playerA.currentMediaItem == null || playerA.mediaItemCount == 0) break
+
+            val duration = playerA.duration.takeIf { it > 0L } ?: activeTrack.durationMs
+            val remaining = duration - playerA.currentPosition.coerceAtLeast(0L)
+            if (duration > 0L && remaining <= 7_500L) {
+                val snapshot = LocalTrackLibrarySnapshot.fromTracks(tracks.toList())
+                val decision = AutoDJCoordinator.proposeNext(
+                    state = autoDjSessionState,
+                    library = snapshot.entries,
+                    request = LocalTrackSelectionRequest(
+                        favoriteTrackIds = favoriteTrackIds.toSet(),
+                        limit = 1
+                    ),
+                    transitionDurationMs = 6_000L
+                )
+                if (decision !is AutoDJCoordinatorDecision.Ready) {
+                    val reason = (decision as? AutoDJCoordinatorDecision.Blocked)?.reason
+                        ?: "No next local track is available."
+                    stopAutoDJ(reason)
+                    return
+                }
+                val next = snapshot.trackFor(decision.nextTrack)
+                if (next == null) {
+                    stopAutoDJ("The selected local track is no longer available.")
+                    return
+                }
+                val approval = AutoDJTransitionApproval(
+                    currentTrackId = activeTrack.id,
+                    nextTrackId = next.id,
+                    plan = decision.plan
+                )
+                if (!AutoDJCoordinator.approveHandoff(
+                        state = autoDjSessionState,
+                        approval = approval,
+                        availableLocalTrackIds = snapshot.entries.map { it.id }.toSet(),
+                        nextTrackDurationMs = next.durationMs
+                    )
+                ) {
+                    stopAutoDJ("The transition was blocked by a safety check.")
+                    return
+                }
+
+                // Prepare Deck B silently before beginning the gain ramp.
+                playerB.pause()
+                playerB.setPlaybackParameters(PlaybackParameters(1f, 1f))
+                playerB.setMediaItem(MediaItem.fromUri(next.contentUri), 0L)
+                playerB.prepare()
+                playerB.volume = 0f
+                playerB.play()
+                deckBTrack = next
+                val startedAt = android.os.SystemClock.elapsedRealtime()
+                var cancelled = false
+                while (true) {
+                    val stillValid = AutoDJCrossfadeTimeline.mayContinue(
+                        session = autoDjSessionState,
+                        expectedCurrentTrackId = activeTrack.id,
+                        expectedNextTrackId = next.id,
+                        actualCurrentTrackId = currentTrack?.id,
+                        actualNextTrackId = deckBTrack?.id,
+                        userOverride = autoDjSessionState.mode != AutoDJMode.ACTIVE
+                    )
+                    if (!stillValid || !playerA.isPlaying || !playerB.isPlaying) {
+                        cancelled = true
+                        break
+                    }
+                    val frame = AutoDJCrossfadeTimeline.frameAt(
+                        android.os.SystemClock.elapsedRealtime() - startedAt,
+                        decision.plan.transitionDurationMs
+                    ) ?: run {
+                        cancelled = true
+                        break
+                    }
+                    playerA.volume = MixerMath.applyChannelVolume(frame.gains.deckA, deckAVolume)
+                    playerB.volume = MixerMath.applyChannelVolume(frame.gains.deckB, deckBVolume)
+                    if (frame.isComplete) break
+                    delay(100L)
+                }
+                if (cancelled) {
+                    stopAutoDJ("Auto DJ transition cancelled; manual playback has priority.")
+                    return
+                }
+
+                // Promote the selected song to Deck A and return Deck B to standby.
+                playerB.pause()
+                playerA.volume = 0f
+                playerA.setMediaItem(MediaItem.fromUri(next.contentUri), 0L)
+                playerA.prepare()
+                playerA.play()
+                currentTrack = next
+                autoDjSessionState = autoDjSessionState.copy(currentTrackId = next.id)
+                playerB.clearMediaItems()
+                deckBTrack = null
+                crossfadePosition = 0f
+                applyCrossfade()
+                autoDjMessage = "Now playing: ${next.title}"
+            } else {
+                delay(250L)
+            }
+        }
+        if (autoDjMode == AutoDJMode.ACTIVE) {
+            stopAutoDJ("Auto DJ stopped because playback is no longer available.")
+        }
+    }
+
     private fun hasAudioPermission(): Boolean {
         val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
         else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -819,6 +994,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        autoDjJob?.cancel()
         controller?.removeListener(playerListener)
         deckBController?.removeListener(deckBListener)
         MediaController.releaseFuture(controllerFuture)
