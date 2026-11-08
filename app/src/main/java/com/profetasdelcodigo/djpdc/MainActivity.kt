@@ -106,6 +106,8 @@ class MainActivity : ComponentActivity() {
     private var autoDjMessage by mutableStateOf("Auto DJ is off. Start it when a local track is playing.")
     private var autoDjSessionState = AutoDJSessionState()
     private var autoDjJob: Job? = null
+    private var bpmLibraryWarmupJob: Job? = null
+    private val measuredBpmByTrackId = mutableMapOf<Long, Float>()
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -715,6 +717,62 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun restoreBpmCache(library: List<Track>) {
+        val preferences = getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE)
+        measuredBpmByTrackId.clear()
+        library.forEach { track ->
+            val cachedUri = preferences.getString("uri_${track.id}", null)
+            val cachedBpm = preferences.getFloat("bpm_${track.id}", -1f)
+            if (cachedUri == track.contentUri.toString() && cachedBpm in 40f..240f) {
+                measuredBpmByTrackId[track.id] = cachedBpm
+            }
+        }
+    }
+
+    private fun saveMeasuredBpm(track: Track, bpm: Float) {
+        if (!bpm.isFinite() || bpm !in 40f..240f) return
+        measuredBpmByTrackId[track.id] = bpm
+        getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE).edit()
+            .putString("uri_${track.id}", track.contentUri.toString())
+            .putFloat("bpm_${track.id}", bpm)
+            .apply()
+    }
+
+    private suspend fun measureBpm(track: Track): Float? = withContext(Dispatchers.IO) {
+        runCatching {
+            val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri, maxSeconds = 20)
+                ?: return@runCatching null
+            AudioBpmAnalyzer.estimateBpm(decoded.first, decoded.second)
+        }.getOrNull()
+    }
+
+    private fun warmBpmCandidates(currentTrackId: Long) {
+        bpmLibraryWarmupJob?.cancel()
+        val snapshot = LocalTrackLibrarySnapshot.fromTracks(tracks.toList())
+        val candidates = LocalTrackSelector.rank(
+            snapshot.entries,
+            LocalTrackSelectionRequest(
+                favoriteTrackIds = favoriteTrackIds.toSet(),
+                excludedTrackIds = setOf(currentTrackId),
+                limit = 6
+            )
+        ).mapNotNull { snapshot.trackFor(it.track) }
+            .filter { measuredBpmByTrackId[it.id] == null }
+        bpmLibraryWarmupJob = lifecycleScope.launch {
+            for (candidate in candidates) {
+                if (!isActive || autoDjMode != AutoDJMode.ACTIVE) break
+                val bpm = measureBpm(candidate)
+                if (bpm != null && tracks.any {
+                        it.id == candidate.id && it.contentUri == candidate.contentUri
+                    }
+                ) {
+                    saveMeasuredBpm(candidate, bpm)
+                }
+                delay(250L)
+            }
+        }
+    }
+
     private fun analyzeBpm(track: Track, deckA: Boolean) {
         if (deckA) {
             bpmAnalysisA = true
@@ -724,13 +782,8 @@ class MainActivity : ComponentActivity() {
             bpmMessageB = "Decoding audio…"
         }
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri, maxSeconds = 20)
-                        ?: return@runCatching null
-                    AudioBpmAnalyzer.estimateBpm(decoded.first, decoded.second)
-                }.getOrNull()
-            }
+            val result = measureBpm(track)
+            if (result != null) saveMeasuredBpm(track, result)
             if (deckA) {
                 bpmAnalysisA = false
                 if (currentTrack?.contentUri == track.contentUri) {
@@ -805,6 +858,7 @@ class MainActivity : ComponentActivity() {
             val found = TrackRepository(this).loadTracks()
             tracks.clear()
             tracks.addAll(found)
+            restoreBpmCache(found)
             libraryMessage = if (found.isEmpty()) {
                 "No music files were found. Add audio files to your device and rescan."
             } else {
@@ -899,6 +953,7 @@ class MainActivity : ComponentActivity() {
         if (autoBpmA == null && !bpmAnalysisA) {
             analyzeBpm(selected, deckA = true)
         }
+        warmBpmCandidates(selected.id)
         autoDjJob = lifecycleScope.launch {
             runAutoDJLoop()
         }
@@ -907,6 +962,8 @@ class MainActivity : ComponentActivity() {
     private fun stopAutoDJ(message: String) {
         autoDjJob?.cancel()
         autoDjJob = null
+        bpmLibraryWarmupJob?.cancel()
+        bpmLibraryWarmupJob = null
         autoDjSessionState = (AutoDJSessionPolicy.apply(
             autoDjSessionState,
             AutoDJUserCommand.DISABLE
@@ -939,7 +996,9 @@ class MainActivity : ComponentActivity() {
                         favoriteTrackIds = favoriteTrackIds.toSet(),
                         limit = 1
                     ),
-                    transitionDurationMs = 6_000L
+                    transitionDurationMs = 6_000L,
+                    currentBpm = autoBpmA ?: measuredBpmByTrackId[activeTrack.id],
+                    measuredBpms = measuredBpmByTrackId.toMap()
                 )
                 if (decision !is AutoDJCoordinatorDecision.Ready) {
                     val reason = (decision as? AutoDJCoordinatorDecision.Blocked)?.reason
@@ -970,7 +1029,9 @@ class MainActivity : ComponentActivity() {
 
                 // Prepare Deck B silently before beginning the gain ramp.
                 playerB.pause()
-                playerB.setPlaybackParameters(PlaybackParameters(1f, 1f))
+                playerB.setPlaybackParameters(
+                    PlaybackParameters(decision.plan.playbackSpeedRatio, 1f)
+                )
                 playerB.setMediaItem(MediaItem.fromUri(next.contentUri), 0L)
                 playerB.prepare()
                 playerB.volume = 0f
@@ -1025,6 +1086,7 @@ class MainActivity : ComponentActivity() {
                 // Promote the selected song to Deck A and return Deck B to standby.
                 playerB.pause()
                 playerA.volume = 0f
+                playerA.setPlaybackParameters(PlaybackParameters(1f, 1f))
                 playerA.setMediaItem(MediaItem.fromUri(next.contentUri), 0L)
                 playerA.prepare()
                 playerA.play()
@@ -1035,6 +1097,7 @@ class MainActivity : ComponentActivity() {
                 bpmAnalysisA = false
                 bpmMessageA = "Analyzing next track…"
                 analyzeBpm(next, deckA = true)
+                warmBpmCandidates(next.id)
                 playerB.clearMediaItems()
                 deckBTrack = null
                 crossfadePosition = 0f
@@ -1063,6 +1126,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         autoDjJob?.cancel()
+        bpmLibraryWarmupJob?.cancel()
         controller?.removeListener(playerListener)
         deckBController?.removeListener(deckBListener)
         MediaController.releaseFuture(controllerFuture)
