@@ -40,7 +40,9 @@ object AutoDJCoordinator {
         request: LocalTrackSelectionRequest = LocalTrackSelectionRequest(),
         transitionDurationMs: Long = 6_000L,
         currentBpm: Float? = null,
-        measuredBpms: Map<Long, Float> = emptyMap()
+        measuredBpms: Map<Long, Float> = emptyMap(),
+        currentEnergyProfile: TrackEnergyProfile? = null,
+        measuredEnergyProfiles: Map<Long, TrackEnergyProfile> = emptyMap()
     ): AutoDJCoordinatorDecision {
         val currentId = state.currentTrackId
             ?: return AutoDJCoordinatorDecision.Blocked("No current local track is selected.")
@@ -58,7 +60,9 @@ object AutoDJCoordinator {
             autoDjEnabled = true,
             transitionDurationMs = transitionDurationMs,
             currentBpm = currentBpm,
-            measuredBpms = measuredBpms
+            measuredBpms = measuredBpms,
+            currentEnergyProfile = currentEnergyProfile,
+            measuredEnergyProfiles = measuredEnergyProfiles
         )) {
             is LocalDJDecision.Ready -> AutoDJCoordinatorDecision.Ready(
                 nextTrack = decision.nextTrack,
