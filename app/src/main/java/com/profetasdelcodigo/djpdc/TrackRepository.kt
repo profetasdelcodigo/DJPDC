@@ -10,7 +10,8 @@ data class Track(
     val artist: String,
     val album: String,
     val durationMs: Long,
-    val contentUri: android.net.Uri
+    val contentUri: android.net.Uri,
+    val albumArtUri: android.net.Uri?
 )
 
 class TrackRepository(private val context: Context) {
@@ -21,7 +22,8 @@ class TrackRepository(private val context: Context) {
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
-            MediaStore.Audio.Media.DURATION
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.ALBUM_ID
         )
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
@@ -39,6 +41,7 @@ class TrackRepository(private val context: Context) {
             val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val albumIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
@@ -48,6 +51,7 @@ class TrackRepository(private val context: Context) {
                 val album = cursor.getString(albumColumn)
                     ?.takeUnless { it == "<unknown>" } ?: "Unknown album"
                 val duration = cursor.getLong(durationColumn)
+                val albumId = cursor.getLong(albumIdColumn)
 
                 tracks += Track(
                     id = id,
@@ -55,7 +59,10 @@ class TrackRepository(private val context: Context) {
                     artist = artist,
                     album = album,
                     durationMs = duration,
-                    contentUri = ContentUris.withAppendedId(collection, id)
+                    contentUri = ContentUris.withAppendedId(collection, id),
+                    albumArtUri = if (albumId > 0L) ContentUris.withAppendedId(
+                        android.net.Uri.parse("content://media/external/audio/albumart"), albumId
+                    ) else null
                 )
             }
         }
