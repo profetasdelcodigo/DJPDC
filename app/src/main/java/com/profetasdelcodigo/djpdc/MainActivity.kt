@@ -1030,6 +1030,11 @@ class MainActivity : ComponentActivity() {
                 playerA.play()
                 currentTrack = next
                 autoDjSessionState = autoDjSessionState.copy(currentTrackId = next.id)
+                // The old estimate belongs to the previous song; analyze the new deck.
+                autoBpmA = null
+                bpmAnalysisA = false
+                bpmMessageA = "Analyzing next track…"
+                analyzeBpm(next, deckA = true)
                 playerB.clearMediaItems()
                 deckBTrack = null
                 crossfadePosition = 0f
