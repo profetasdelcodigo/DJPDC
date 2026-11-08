@@ -98,6 +98,10 @@ class MainActivity : ComponentActivity() {
             val uri = mediaItem?.localConfiguration?.uri ?: return
             deckBTrack = tracks.firstOrNull { it.contentUri == uri } ?: deckBTrack
             deckBCueMs = null
+            tapTimestampsMs.clear()
+            tapTempoBpm = null
+            beatmatchSpeed = null
+            deckBController?.setPlaybackParameters(PlaybackParameters(1f, 1f))
         }
     }
 
@@ -118,6 +122,10 @@ class MainActivity : ComponentActivity() {
             val uri = mediaItem?.localConfiguration?.uri ?: return
             currentTrack = tracks.firstOrNull { it.contentUri == uri }
             deckACueMs = null
+            deckATapTimestampsMs.clear()
+            deckATapTempoBpm = null
+            beatmatchSpeed = null
+            deckBController?.setPlaybackParameters(PlaybackParameters(1f, 1f))
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -631,6 +639,10 @@ class MainActivity : ComponentActivity() {
         val deck = deckBController ?: return
         deckBTrack = track
         deckBCueMs = null
+        tapTimestampsMs.clear()
+        tapTempoBpm = null
+        beatmatchSpeed = null
+        deck.setPlaybackParameters(PlaybackParameters(1f, 1f))
         deck.setMediaItem(MediaItem.fromUri(track.contentUri))
         deck.prepare()
         applyCrossfade()
