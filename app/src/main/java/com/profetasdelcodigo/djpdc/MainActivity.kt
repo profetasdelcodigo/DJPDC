@@ -25,8 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +44,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
@@ -54,6 +57,10 @@ class MainActivity : ComponentActivity() {
     private var searchQuery by mutableStateOf("")
     private var shuffleEnabled by mutableStateOf(false)
     private var repeatMode by mutableStateOf(Player.REPEAT_MODE_OFF)
+    private var playbackPositionMs by mutableStateOf(0L)
+    private var playbackDurationMs by mutableStateOf(0L)
+    private var showQueue by mutableStateOf(false)
+    private val queueTracks = mutableStateListOf<Track>()
     private var libraryMessage by mutableStateOf("Your local tracks will appear here.")
     private var controller: MediaController? = null
     private lateinit var controllerFuture: ListenableFuture<MediaController>
@@ -96,6 +103,16 @@ class MainActivity : ComponentActivity() {
         if (permissionGranted) loadLibrary()
 
         setContent {
+            LaunchedEffect(controllerReady) {
+                while (true) {
+                    val player = controller
+                    if (player != null) {
+                        playbackPositionMs = player.currentPosition.coerceAtLeast(0L)
+                        playbackDurationMs = player.duration.takeIf { it > 0L } ?: 0L
+                    }
+                    delay(500)
+                }
+            }
             val filteredTracks = tracks.filter { track ->
                 val query = searchQuery.trim()
                 (!showFavoritesOnly || track.id in favoriteTrackIds) &&
@@ -139,6 +156,17 @@ class MainActivity : ComponentActivity() {
                                     color = Color(0xFF9AA39A),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
+                                Slider(
+                                    value = if (playbackDurationMs > 0L) (playbackPositionMs.toFloat() / playbackDurationMs).coerceIn(0f, 1f) else 0f,
+                                    onValueChange = { fraction ->
+                                        if (playbackDurationMs > 0L) controller?.seekTo((fraction * playbackDurationMs).toLong())
+                                    },
+                                    enabled = controllerReady && playbackDurationMs > 0L
+                                )
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(formatTime(playbackPositionMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                    Text(formatTime(playbackDurationMs), color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                }
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(
@@ -188,12 +216,30 @@ class MainActivity : ComponentActivity() {
                             Text("YOUR LIBRARY", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.weight(1f))
                             Text("${tracks.size} tracks", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                            Button(onClick = { showQueue = !showQueue }, enabled = controllerReady) { Text(if (showQueue) "Hide queue" else "Queue") }
                             Button(onClick = { loadLibrary() }, enabled = permissionGranted) { Text("Scan") }
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { showFavoritesOnly = false }) { Text(if (!showFavoritesOnly) "All tracks ✓" else "All tracks") }
                             Button(onClick = { showFavoritesOnly = true }) { Text(if (showFavoritesOnly) "Favorites ✓" else "Favorites") }
+                        }
+
+                        if (showQueue) {
+                            Text("UP NEXT  ·  ${queueTracks.size} tracks", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
+                            val nextTracks = queueTracks.drop((controller?.currentMediaItemIndex ?: 0) + 1).take(5)
+                            if (nextTracks.isEmpty()) {
+                                Text("No upcoming tracks in the queue.", color = Color(0xFF9AA39A))
+                            } else {
+                                nextTracks.forEach { queuedTrack ->
+                                    Text(
+                                        "•  ${queuedTrack.title} — ${queuedTrack.artist}",
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
 
                         OutlinedTextField(
@@ -287,6 +333,8 @@ class MainActivity : ComponentActivity() {
         val index = tracks.indexOfFirst { it.id == track.id }
         if (index < 0) return
         currentTrack = track
+        queueTracks.clear()
+        queueTracks.addAll(tracks)
         activePlayer.setMediaItems(tracks.map { MediaItem.fromUri(it.contentUri) }, index, 0L)
         activePlayer.prepare()
         activePlayer.play()
@@ -310,6 +358,12 @@ class MainActivity : ComponentActivity() {
         controller = null
         super.onDestroy()
     }
+}
+
+private fun formatTime(milliseconds: Long): String {
+    if (milliseconds <= 0L) return "0:00"
+    val totalSeconds = milliseconds / 1000
+    return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
 
 @androidx.compose.runtime.Composable
