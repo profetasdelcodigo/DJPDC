@@ -57,6 +57,11 @@ class MainActivity : ComponentActivity() {
         override fun onIsPlayingChanged(playing: Boolean) {
             isPlaying = playing
         }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val uri = mediaItem?.localConfiguration?.uri ?: return
+            currentTrack = tracks.firstOrNull { it.contentUri == uri }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,6 +128,7 @@ class MainActivity : ComponentActivity() {
                             Text("YOUR LIBRARY", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.weight(1f))
                             Text("${tracks.size} tracks", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                            Button(onClick = { loadLibrary() }, enabled = permissionGranted) { Text("Scan") }
                         }
 
                         if (!permissionGranted) {
