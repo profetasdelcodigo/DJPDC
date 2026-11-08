@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import coil.compose.AsyncImage
@@ -82,7 +83,10 @@ class MainActivity : ComponentActivity() {
     private var deckAVolume by mutableStateOf(1.0f)
     private var deckBVolume by mutableStateOf(1.0f)
     private val tapTimestampsMs = mutableStateListOf<Long>()
+    private val deckATapTimestampsMs = mutableStateListOf<Long>()
     private var tapTempoBpm by mutableStateOf<Float?>(null)
+    private var deckATapTempoBpm by mutableStateOf<Float?>(null)
+    private var beatmatchSpeed by mutableStateOf<Float?>(null)
     private var deckACueMs by mutableStateOf<Long?>(null)
     private var deckBCueMs by mutableStateOf<Long?>(null)
 
@@ -267,6 +271,26 @@ class MainActivity : ComponentActivity() {
                                             enabled = controllerReady && (controller?.mediaItemCount ?: 0) > 1
                                         ) { Text("Next") }
                                     }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text("DECK A TAP TEMPO", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
+                                            Text(deckATapTempoBpm?.let { "${it.toInt()} BPM" } ?: "Tap 3+ times", color = Color.White)
+                                        }
+                                        Button(
+                                            onClick = {
+                                                val now = android.os.SystemClock.elapsedRealtime()
+                                                if (deckATapTimestampsMs.lastOrNull()?.let { now - it > 2000L } == true) deckATapTimestampsMs.clear()
+                                                deckATapTimestampsMs.add(now)
+                                                while (deckATapTimestampsMs.size > 7) deckATapTimestampsMs.removeAt(0)
+                                                deckATapTempoBpm = TapTempo.bpmFromTimestamps(deckATapTimestampsMs)
+                                            },
+                                            enabled = currentTrack != null
+                                        ) { Text("TAP A") }
+                                        Button(
+                                            onClick = { deckATapTimestampsMs.clear(); deckATapTempoBpm = null },
+                                            enabled = deckATapTimestampsMs.isNotEmpty()
+                                        ) { Text("Reset") }
+                                    }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(
                                             onClick = { deckACueMs = controller?.currentPosition?.coerceAtLeast(0L) },
@@ -393,6 +417,33 @@ class MainActivity : ComponentActivity() {
                                         enabled = tapTimestampsMs.isNotEmpty()
                                     ) { Text("Reset") }
                                 }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = {
+                                            val masterBpm = deckATapTempoBpm
+                                            val sourceBpm = tapTempoBpm
+                                            val speed = BeatmatchMath.matchingSpeed(masterBpm, sourceBpm)
+                                            if (speed != null) {
+                                                deckBController?.setPlaybackParameters(PlaybackParameters(speed, 1f))
+                                                beatmatchSpeed = speed
+                                            }
+                                        },
+                                        enabled = deckBController != null && deckATapTempoBpm != null && tapTempoBpm != null
+                                    ) { Text("MATCH B TO A") }
+                                    Button(
+                                        onClick = {
+                                            deckBController?.setPlaybackParameters(PlaybackParameters(1f, 1f))
+                                            beatmatchSpeed = null
+                                        },
+                                        enabled = deckBController != null
+                                    ) { Text("RESET SPEED") }
+                                }
+                                Text(
+                                    beatmatchSpeed?.let { "B speed: ${"%.1f".format(it * 100f)}% · pitch preserved" }
+                                        ?: "Beatmatch: measure both decks, then match B to A",
+                                    color = Color(0xFF9AA39A),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text("DECK B VOLUME", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                                     Spacer(Modifier.weight(1f))
