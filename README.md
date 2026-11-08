@@ -45,3 +45,8 @@ gradle --no-daemon assembleDebug
 ```
 
 A successful workflow run is still required before treating the current source as a verified build or installable APK.
+
+### Playback improvements (Beta 0.4)
+- Live playback progress with elapsed and total time.
+- Seek control to jump within the current track.
+- Upcoming queue preview showing the next tracks in the active library queue.
