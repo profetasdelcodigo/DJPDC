@@ -3,10 +3,9 @@ package com.profetasdelcodigo.djpdc
 /**
  * Conservative on-device decision layer.
  *
- * It can choose a next item only from the supplied local-library snapshot.
- * BPM-aware ranking is used only when both the current track and a candidate
- * have a measured BPM and the required tempo correction is within the safe
- * range. Otherwise it falls back to metadata ranking and a simple fade.
+ * BPM-aware ranking is used only when measured tempos are available and the
+ * required correction is within the safe range. Otherwise metadata ranking
+ * remains the fallback. No beat alignment is claimed.
  */
 sealed class LocalDJDecision {
     data class Ready(
