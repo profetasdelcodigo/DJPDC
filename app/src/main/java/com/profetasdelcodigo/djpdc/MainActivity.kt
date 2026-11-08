@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
     private var autoDjJob: Job? = null
     private var bpmLibraryWarmupJob: Job? = null
     private val measuredBpmByTrackId = mutableMapOf<Long, Float>()
+    private val measuredEnergyByTrackId = mutableMapOf<Long, TrackEnergyProfile>()
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -861,11 +862,24 @@ class MainActivity : ComponentActivity() {
     private fun restoreBpmCache(library: List<Track>) {
         val preferences = getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE)
         measuredBpmByTrackId.clear()
+        measuredEnergyByTrackId.clear()
         library.forEach { track ->
             val cachedUri = preferences.getString("uri_${track.id}", null)
             val cachedBpm = preferences.getFloat("bpm_${track.id}", -1f)
             if (cachedUri == track.contentUri.toString() && cachedBpm in 40f..240f) {
                 measuredBpmByTrackId[track.id] = cachedBpm
+            }
+            val cachedEnergy = preferences.getFloat("energy_${track.id}", -1f)
+            val cachedPeak = preferences.getFloat("energy_peak_${track.id}", -1f)
+            val cachedDynamics = preferences.getFloat("energy_dynamics_${track.id}", -1f)
+            val cachedTransients = preferences.getFloat("energy_transients_${track.id}", -1f)
+            if (cachedUri == track.contentUri.toString() &&
+                cachedEnergy in 0f..1f && cachedPeak in 0f..1f &&
+                cachedDynamics in 0f..1f && cachedTransients in 0f..1f
+            ) {
+                measuredEnergyByTrackId[track.id] = TrackEnergyProfile(
+                    cachedEnergy, cachedPeak, cachedDynamics, cachedTransients, 20f
+                )
             }
         }
     }
@@ -887,6 +901,17 @@ class MainActivity : ComponentActivity() {
         }.getOrNull()
     }
 
+    private fun saveEnergyProfile(track: Track, profile: TrackEnergyProfile) {
+        measuredEnergyByTrackId[track.id] = profile
+        getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE).edit()
+            .putString("uri_${track.id}", track.contentUri.toString())
+            .putFloat("energy_${track.id}", profile.energy)
+            .putFloat("energy_peak_${track.id}", profile.peakEnergy)
+            .putFloat("energy_dynamics_${track.id}", profile.dynamicRange)
+            .putFloat("energy_transients_${track.id}", profile.transientDensity)
+            .apply()
+    }
+
     private fun warmBpmCandidates(currentTrackId: Long) {
         bpmLibraryWarmupJob?.cancel()
         val snapshot = LocalTrackLibrarySnapshot.fromTracks(tracks.toList())
@@ -898,16 +923,25 @@ class MainActivity : ComponentActivity() {
                 limit = 6
             )
         ).mapNotNull { snapshot.trackFor(it.track) }
-            .filter { measuredBpmByTrackId[it.id] == null }
+            .filter { measuredBpmByTrackId[it.id] == null || measuredEnergyByTrackId[it.id] == null }
         bpmLibraryWarmupJob = lifecycleScope.launch {
             for (candidate in candidates) {
                 if (!isActive || autoDjMode != AutoDJMode.ACTIVE) break
-                val bpm = measureBpm(candidate)
-                if (bpm != null && tracks.any {
+                val decoded = withContext(Dispatchers.IO) {
+                    runCatching {
+                        AudioBpmDecoder.decodeMono(this@MainActivity, candidate.contentUri, maxSeconds = 20)
+                    }.getOrNull()
+                }
+                if (decoded != null && tracks.any {
                         it.id == candidate.id && it.contentUri == candidate.contentUri
                     }
                 ) {
-                    saveMeasuredBpm(candidate, bpm)
+                    AudioBpmAnalyzer.estimateBpm(decoded.first, decoded.second)?.let {
+                        saveMeasuredBpm(candidate, it)
+                    }
+                    TrackEnergyAnalyzer.analyze(decoded.first, decoded.second)?.let {
+                        saveEnergyProfile(candidate, it)
+                    }
                 }
                 delay(250L)
             }
@@ -1167,7 +1201,9 @@ class MainActivity : ComponentActivity() {
                     ),
                     transitionDurationMs = 6_000L,
                     currentBpm = autoBpmA ?: measuredBpmByTrackId[activeTrack.id],
-                    measuredBpms = measuredBpmByTrackId.toMap()
+                    measuredBpms = measuredBpmByTrackId.toMap(),
+                    currentEnergyProfile = measuredEnergyByTrackId[activeTrack.id],
+                    measuredEnergyProfiles = measuredEnergyByTrackId.toMap()
                 )
                 if (decision !is AutoDJCoordinatorDecision.Ready) {
                     val reason = (decision as? AutoDJCoordinatorDecision.Blocked)?.reason
