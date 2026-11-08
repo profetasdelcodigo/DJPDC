@@ -209,7 +209,7 @@ class MainActivity : ComponentActivity() {
                 surfaceVariant = Color(0xFF202136),
                 onSurfaceVariant = Color(0xFFA7A9BC)
             )) {
-                Surface(Modifier.fillMaxSize(), color = Color(0xFF0B0D0B)) {
+                Surface(Modifier.fillMaxSize(), color = Color(0xFF090A12)) {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -217,17 +217,17 @@ class MainActivity : ComponentActivity() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("DJPDC", style = MaterialTheme.typography.headlineLarge, color = Color.White)
                             Spacer(Modifier.weight(1f))
-                            Text("BETA 0.8", color = Color(0xFF76B900))
+                            Text("SMART MIX · BETA", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelMedium)
                         }
-                        Text("YOUR MUSIC. YOUR MIX.", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.labelLarge)
+                        Text("TU MÚSICA · TU MEZCLA · CONTROL INTELIGENTE", color = Color(0xFFA7A9BC), style = MaterialTheme.typography.labelMedium)
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color(0xFF151815),
+                            color = Color(0xFF141522),
                             shape = RoundedCornerShape(22.dp)
                         ) {
                             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("NOW PLAYING", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
+                                Text("REPRODUCIENDO AHORA", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -251,7 +251,7 @@ class MainActivity : ComponentActivity() {
                                                 verticalArrangement = Arrangement.Center,
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                Text("DJPDC", color = Color(0xFF76B900), style = MaterialTheme.typography.titleMedium)
+                                                Text("DJPDC", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.titleMedium)
                                                 Text("♪", color = Color.White, style = MaterialTheme.typography.headlineLarge)
                                             }
                                         }
@@ -276,7 +276,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                         Text(
                                             currentTrack?.album ?: "LOCAL MUSIC PLAYER",
-                                            color = Color(0xFF76B900),
+                                            color = Color(0xFF9B8CFF),
                                             style = MaterialTheme.typography.labelSmall,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -361,7 +361,7 @@ class MainActivity : ComponentActivity() {
                                     Text(
                                         beatA?.let { "PULSE A · ${it.beatInBar}/4 · ${(it.phase * 100).toInt()}%" }
                                             ?: "PULSE A · awaiting BPM",
-                                        color = Color(0xFF76B900),
+                                        color = Color(0xFF9B8CFF),
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -408,7 +408,7 @@ class MainActivity : ComponentActivity() {
                         if (showAdvancedControls) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color(0xFF151815),
+                            color = Color(0xFF141522),
                             shape = RoundedCornerShape(18.dp)
                         ) {
                             Column(
@@ -416,7 +416,7 @@ class MainActivity : ComponentActivity() {
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("DECK B", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
+                                    Text("DECK B", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.labelLarge)
                                     Spacer(Modifier.weight(1f))
                                     Text(
                                         deckBTrack?.title ?: "No track loaded",
@@ -530,7 +530,7 @@ class MainActivity : ComponentActivity() {
                                 Text(
                                     beatB?.let { "PULSE B · ${it.beatInBar}/4 · ${(it.phase * 100).toInt()}%" }
                                         ?: "PULSE B · awaiting BPM",
-                                    color = Color(0xFF76B900),
+                                    color = Color(0xFF9B8CFF),
                                     style = MaterialTheme.typography.labelSmall
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -603,7 +603,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("YOUR LIBRARY", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
+                            Text("BIBLIOTECA MUSICAL", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.weight(1f))
                             Text("${tracks.size} tracks", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
                             Button(onClick = { showQueue = !showQueue }, enabled = controllerReady) { Text(if (showQueue) "Hide queue" else "Queue") }
@@ -660,7 +660,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (showQueue) {
-                            Text("UP NEXT  ·  ${queueTracks.size} tracks", color = Color(0xFF76B900), style = MaterialTheme.typography.labelLarge)
+                            Text("UP NEXT  ·  ${queueTracks.size} tracks", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.labelLarge)
                             val nextTracks = queueTracks.drop((controller?.currentMediaItemIndex ?: 0) + 1).take(5)
                             if (nextTracks.isEmpty()) {
                                 Text("No upcoming tracks in the queue.", color = Color(0xFF9AA39A))
@@ -684,8 +684,8 @@ class MainActivity : ComponentActivity() {
                             enabled = permissionGranted,
                             placeholder = { Text("Search songs, artists or albums") },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color(0xFF76B900),
-                                cursorColor = Color(0xFF76B900),
+                                focusedBorderColor = Color(0xFF9B8CFF),
+                                cursorColor = Color(0xFF9B8CFF),
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White
                             )
@@ -1191,7 +1191,7 @@ private fun TrackRow(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF151815),
+        color = Color(0xFF141522),
         shape = RoundedCornerShape(14.dp)
     ) {
         Row(
