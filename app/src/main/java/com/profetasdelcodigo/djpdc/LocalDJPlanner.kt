@@ -36,10 +36,13 @@ object LocalDJPlanner {
             return LocalDJDecision.NoCandidate("The current track is no longer in the available local library.")
         }
 
+        if (request.limit <= 0) {
+            return LocalDJDecision.NoCandidate("The selection limit must be greater than zero.")
+        }
+
         val scopedRequest = request.copy(
             allowedTrackIds = request.allowedTrackIds?.intersect(availableIds) ?: availableIds,
-            excludedTrackIds = request.excludedTrackIds + currentTrackId,
-            limit = maxOf(1, request.limit)
+            excludedTrackIds = request.excludedTrackIds + currentTrackId
         )
         val next = LocalTrackSelector.rank(library, scopedRequest).firstOrNull()
             ?: return LocalDJDecision.NoCandidate(
