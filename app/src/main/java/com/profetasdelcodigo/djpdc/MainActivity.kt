@@ -894,7 +894,11 @@ class MainActivity : ComponentActivity() {
         activePlayer.prepare()
         activePlayer.play()
         autoDjMode = AutoDJMode.ACTIVE
-        autoDjMessage = "Choosing only from music stored on this phone."
+        autoDjMessage = "Analyzing the current track and choosing only from music stored on this phone."
+        // Analyze in the background; playback continues if tempo detection fails.
+        if (autoBpmA == null && !bpmAnalysisA) {
+            analyzeBpm(selected, deckA = true)
+        }
         autoDjJob = lifecycleScope.launch {
             runAutoDJLoop()
         }
