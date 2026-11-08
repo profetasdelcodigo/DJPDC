@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -245,60 +246,61 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("REPRODUCIENDO AHORA", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(252.dp)
+                                        .clip(RoundedCornerShape(26.dp)),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     if (currentTrack?.albumArtUri != null) {
                                         AsyncImage(
                                             model = currentTrack?.albumArtUri,
-                                            contentDescription = "Album artwork",
-                                            modifier = Modifier.size(104.dp),
+                                            contentDescription = "Carátula de ${currentTrack?.title}",
+                                            modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
                                         )
                                     } else {
                                         Surface(
-                                            modifier = Modifier.size(104.dp),
+                                            modifier = Modifier.fillMaxSize(),
                                             color = Color(0xFF24243A),
-                                            shape = RoundedCornerShape(14.dp)
+                                            shape = RoundedCornerShape(26.dp)
                                         ) {
                                             Column(
                                                 modifier = Modifier.fillMaxSize(),
                                                 verticalArrangement = Arrangement.Center,
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                Text("DJPDC", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.titleMedium)
-                                                Text("♪", color = Color.White, style = MaterialTheme.typography.headlineLarge)
+                                                Text("DJPDC", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.headlineMedium)
+                                                Text("♫", color = Color.White, style = MaterialTheme.typography.displayLarge)
+                                                Text("SMART MIX", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
                                             }
                                         }
                                     }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(5.dp)
-                                    ) {
-                                        Text(
-                                            currentTrack?.title ?: "Choose a track",
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.titleLarge,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            currentTrack?.artist ?: if (controllerReady) "DJPDC playback engine ready" else "Connecting playback engine…",
-                                            color = Color(0xFF9AA39A),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            currentTrack?.album ?: "LOCAL MUSIC PLAYER",
-                                            color = Color(0xFF9B8CFF),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                                }
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Text(
+                                        currentTrack?.title ?: "Elige una canción",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        currentTrack?.artist ?: if (controllerReady) "Motor de reproducción listo" else "Conectando el motor de audio…",
+                                        color = Color(0xFFA7A9BC),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        currentTrack?.album ?: "TU BIBLIOTECA LOCAL",
+                                        color = Color(0xFF62D9E8),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                                 Slider(
                                     value = if (playbackDurationMs > 0L) (playbackPositionMs.toFloat() / playbackDurationMs).coerceIn(0f, 1f) else 0f,
