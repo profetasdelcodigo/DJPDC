@@ -190,3 +190,16 @@ Important: this coordinator returns a decision/approval only. It does not call
 Media3, start Deck B, schedule a crossfade, or control audio. The next
 implementation step is a playback executor that performs a fresh handoff check
 immediately before loading Deck B and that can cancel safely on user pause/stop.
+
+
+### Cancellable crossfade timeline
+
+`AutoDJCrossfadeTimeline` now provides deterministic equal-power gain frames
+for a bounded transition duration. It clamps elapsed time, rejects invalid
+durations, and exposes a continuation guard that checks the active session,
+expected current/next track identities and manual user override.
+
+This is the tested timing/math layer only. It is not yet scheduled against
+Media3 playback, and it does not claim an audible automatic mix. The Android
+executor must sample the timeline, apply both deck gains, and cancel its job
+immediately when the guard fails or the user pauses/stops/changes tracks.
