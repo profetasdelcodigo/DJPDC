@@ -159,3 +159,17 @@ MediaStore IDs are collapsed deterministically (first occurrence wins).
 
 This is an integration boundary only: it does not start playback, schedule a
 crossfade, access remote catalogs, or enable Auto DJ by itself.
+
+
+### Explicit Auto DJ session gate
+
+`AutoDJSessionPolicy` adds a pure state gate with OFF, ACTIVE and PAUSED
+modes. A session starts OFF; only an explicit ENABLE command activates it.
+PAUSE blocks planning immediately, DISABLE returns to OFF and clears the
+session track, and RESUME is accepted only from PAUSED. Planning additionally
+requires a known current track from the local library, and execution requires
+an accepted transition plan.
+
+This policy is deliberately not connected to Media3 yet. It cannot start,
+pause or stop audio on its own; the playback coordinator must enforce these
+checks immediately before any future transition.
