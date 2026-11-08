@@ -25,6 +25,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -424,13 +426,13 @@ class MainActivity : ComponentActivity() {
 
                         if (selectedTab == DjpdcTab.MIXER) {
                         Surface(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().weight(1f),
                             color = Color(0xFF141522),
                             shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(1.dp, Color(0xFF2B2D45))
                         ) {
                             Column(
-                                Modifier.padding(16.dp),
+                                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
