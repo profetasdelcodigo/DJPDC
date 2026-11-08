@@ -4,8 +4,9 @@ package com.profetasdelcodigo.djpdc
  * Conservative on-device decision layer.
  *
  * It can choose a next item only from the supplied local-library snapshot.
- * Until reliable beat grids exist, it proposes a simple fade from the start
- * of the next track and never claims beat alignment.
+ * BPM-aware ranking is used only when both the current track and a candidate
+ * have a measured BPM and the required tempo correction is within the safe
+ * range. Otherwise it falls back to metadata ranking and a simple fade.
  */
 sealed class LocalDJDecision {
     data class Ready(
@@ -24,7 +25,9 @@ object LocalDJPlanner {
         currentTrackId: Long?,
         request: LocalTrackSelectionRequest,
         autoDjEnabled: Boolean,
-        transitionDurationMs: Long = 6_000L
+        transitionDurationMs: Long = 6_000L,
+        currentBpm: Float? = null,
+        measuredBpms: Map<Long, Float> = emptyMap()
     ): LocalDJDecision {
         if (!autoDjEnabled) return LocalDJDecision.Disabled()
         if (currentTrackId == null) {
@@ -44,7 +47,13 @@ object LocalDJPlanner {
             allowedTrackIds = request.allowedTrackIds?.intersect(availableIds) ?: availableIds,
             excludedTrackIds = request.excludedTrackIds + currentTrackId
         )
-        val next = LocalTrackSelector.rank(library, scopedRequest).firstOrNull()
+        val ranked = LocalTrackSelector.rank(library, scopedRequest)
+        val bpmSelection = BpmAwareTrackSelector.select(
+            ranked = ranked,
+            currentBpm = currentBpm,
+            measuredBpms = measuredBpms
+        )
+        val next = bpmSelection?.track ?: ranked.firstOrNull()
             ?: return LocalDJDecision.NoCandidate(
                 "No matching next track was found in the phone's available music library."
             )
@@ -53,7 +62,7 @@ object LocalDJPlanner {
             nextTrackId = next.track.id,
             transitionDurationMs = transitionDurationMs,
             nextTrackStartMs = 0L,
-            playbackSpeedRatio = 1f,
+            playbackSpeedRatio = bpmSelection?.playbackSpeedRatio ?: 1f,
             beatAlignmentConfidence = 0f,
             style = DJTransitionStyle.SIMPLE_FADE
         )
@@ -70,7 +79,11 @@ object LocalDJPlanner {
             is DJPlanDecision.Accepted -> LocalDJDecision.Ready(
                 nextTrack = next.track,
                 transition = decision.plan,
-                explanation = "Selected from the phone library using available title, artist and album metadata. A simple fade is proposed; beat matching is not yet available."
+                explanation = if (bpmSelection != null) {
+                    "Selected from the phone library using measured BPM compatibility. A simple fade is proposed; beat alignment is not yet available."
+                } else {
+                    "Selected from the phone library using available title, artist and album metadata. A simple fade is proposed; beat matching is not yet available."
+                }
             )
             is DJPlanDecision.Rejected -> LocalDJDecision.NoCandidate(
                 "The local safety checks rejected this transition: ${decision.reason}."
