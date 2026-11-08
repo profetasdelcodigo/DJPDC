@@ -901,6 +901,14 @@ class MainActivity : ComponentActivity() {
         }.getOrNull()
     }
 
+    private suspend fun measureEnergy(track: Track): TrackEnergyProfile? = withContext(Dispatchers.IO) {
+        runCatching {
+            val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri, maxSeconds = 20)
+                ?: return@runCatching null
+            TrackEnergyAnalyzer.analyze(decoded.first, decoded.second)
+        }.getOrNull()
+    }
+
     private fun saveEnergyProfile(track: Track, profile: TrackEnergyProfile) {
         measuredEnergyByTrackId[track.id] = profile
         getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE).edit()
