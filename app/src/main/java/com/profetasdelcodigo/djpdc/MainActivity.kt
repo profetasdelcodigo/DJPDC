@@ -125,6 +125,7 @@ class MainActivity : ComponentActivity() {
     private var bpmLibraryWarmupJob: Job? = null
     private val measuredBpmByTrackId = mutableMapOf<Long, Float>()
     private val measuredEnergyByTrackId = mutableMapOf<Long, TrackEnergyProfile>()
+    private val measuredMusicalKeyByTrackId = mutableMapOf<Long, MusicalKeyProfile>()
 
     private val deckBListener = object : Player.Listener {
         override fun onIsPlayingChanged(playing: Boolean) {
@@ -863,6 +864,7 @@ class MainActivity : ComponentActivity() {
         val preferences = getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE)
         measuredBpmByTrackId.clear()
         measuredEnergyByTrackId.clear()
+        measuredMusicalKeyByTrackId.clear()
         library.forEach { track ->
             val cachedUri = preferences.getString("uri_${track.id}", null)
             val cachedBpm = preferences.getFloat("bpm_${track.id}", -1f)
@@ -879,6 +881,18 @@ class MainActivity : ComponentActivity() {
             ) {
                 measuredEnergyByTrackId[track.id] = TrackEnergyProfile(
                     cachedEnergy, cachedPeak, cachedDynamics, cachedTransients, 20f
+                )
+            }
+            val cachedTonic = preferences.getInt("key_tonic_${track.id}", -1)
+            val cachedMode = preferences.getInt("key_mode_${track.id}", -1)
+            val cachedKeyConfidence = preferences.getFloat("key_confidence_${track.id}", -1f)
+            if (cachedUri == track.contentUri.toString() && cachedTonic in 0..11 &&
+                cachedMode in 0..1 && cachedKeyConfidence in 0f..1f
+            ) {
+                measuredMusicalKeyByTrackId[track.id] = MusicalKeyProfile(
+                    cachedTonic,
+                    if (cachedMode == 0) MusicalMode.MAJOR else MusicalMode.MINOR,
+                    cachedKeyConfidence
                 )
             }
         }
@@ -909,6 +923,24 @@ class MainActivity : ComponentActivity() {
         }.getOrNull()
     }
 
+    private suspend fun measureMusicalKey(track: Track): MusicalKeyProfile? = withContext(Dispatchers.IO) {
+        runCatching {
+            val decoded = AudioBpmDecoder.decodeMono(this@MainActivity, track.contentUri, maxSeconds = 20)
+                ?: return@runCatching null
+            MusicalKeyAnalyzer.analyze(decoded.first, decoded.second)
+        }.getOrNull()
+    }
+
+    private fun saveMusicalKey(track: Track, profile: MusicalKeyProfile) {
+        measuredMusicalKeyByTrackId[track.id] = profile
+        getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE).edit()
+            .putString("uri_${track.id}", track.contentUri.toString())
+            .putInt("key_tonic_${track.id}", profile.tonic)
+            .putInt("key_mode_${track.id}", if (profile.mode == MusicalMode.MAJOR) 0 else 1)
+            .putFloat("key_confidence_${track.id}", profile.confidence)
+            .apply()
+    }
+
     private fun saveEnergyProfile(track: Track, profile: TrackEnergyProfile) {
         measuredEnergyByTrackId[track.id] = profile
         getSharedPreferences("djpdc_bpm_cache", Context.MODE_PRIVATE).edit()
@@ -931,7 +963,11 @@ class MainActivity : ComponentActivity() {
                 limit = 6
             )
         ).mapNotNull { snapshot.trackFor(it.track) }
-            .filter { measuredBpmByTrackId[it.id] == null || measuredEnergyByTrackId[it.id] == null }
+            .filter {
+                measuredBpmByTrackId[it.id] == null ||
+                    measuredEnergyByTrackId[it.id] == null ||
+                    measuredMusicalKeyByTrackId[it.id] == null
+            }
         bpmLibraryWarmupJob = lifecycleScope.launch {
             for (candidate in candidates) {
                 if (!isActive || autoDjMode != AutoDJMode.ACTIVE) break
@@ -949,6 +985,9 @@ class MainActivity : ComponentActivity() {
                     }
                     TrackEnergyAnalyzer.analyze(decoded.first, decoded.second)?.let {
                         saveEnergyProfile(candidate, it)
+                    }
+                    MusicalKeyAnalyzer.analyze(decoded.first, decoded.second)?.let {
+                        saveMusicalKey(candidate, it)
                     }
                 }
                 delay(250L)
@@ -1220,7 +1259,9 @@ class MainActivity : ComponentActivity() {
                     currentBpm = autoBpmA ?: measuredBpmByTrackId[activeTrack.id],
                     measuredBpms = measuredBpmByTrackId.toMap(),
                     currentEnergyProfile = measuredEnergyByTrackId[activeTrack.id],
-                    measuredEnergyProfiles = measuredEnergyByTrackId.toMap()
+                    measuredEnergyProfiles = measuredEnergyByTrackId.toMap(),
+                    currentMusicalKey = measuredMusicalKeyByTrackId[activeTrack.id],
+                    measuredMusicalKeys = measuredMusicalKeyByTrackId.toMap()
                 )
                 if (decision !is AutoDJCoordinatorDecision.Ready) {
                     val reason = (decision as? AutoDJCoordinatorDecision.Blocked)?.reason
