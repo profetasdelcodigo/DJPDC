@@ -413,7 +413,8 @@ class MainActivity : ComponentActivity() {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = Color(0xFF141522),
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, Color(0xFF2B2D45))
                         ) {
                             Column(
                                 Modifier.padding(16.dp),
