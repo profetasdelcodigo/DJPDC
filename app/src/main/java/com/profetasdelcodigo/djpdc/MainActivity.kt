@@ -304,7 +304,7 @@ class MainActivity : ComponentActivity() {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Button(
                                             onClick = { if (autoDjMode == AutoDJMode.ACTIVE) stopAutoDJ("Auto DJ stopped by you.") else startAutoDJ() },
-                                            enabled = controllerReady && deckBController != null && autoDjMode != AutoDJMode.ACTIVE && currentTrack != null && tracks.isNotEmpty()
+                                            enabled = controllerReady && deckBController != null && currentTrack != null && tracks.isNotEmpty()
                                         ) { Text(if (autoDjMode == AutoDJMode.ACTIVE) "Stop Auto DJ" else "Start Auto DJ") }
                                         Text(autoDjMessage, color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
                                     }
