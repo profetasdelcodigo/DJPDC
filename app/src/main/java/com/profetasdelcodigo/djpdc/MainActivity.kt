@@ -309,29 +309,29 @@ class MainActivity : ComponentActivity() {
                                                 } else if (currentTrack != null) activePlayer.play()
                                             },
                                             enabled = controllerReady && currentTrack != null
-                                        ) { Text(if (isPlaying) "Pause" else "Play") }
+                                        ) { Text(if (isPlaying) "Pausar" else "Reproducir") }
                                         Button(
                                             onClick = { skipToNextTrack() },
                                             enabled = controllerReady && (
                                                 (controller?.mediaItemCount ?: 0) > 1 ||
                                                     (autoDjMode == AutoDJMode.ACTIVE && tracks.size > 1)
                                                 )
-                                        ) { Text("Next") }
+                                        ) { Text("Siguiente") }
                                         Button(
                                             onClick = { stopPlayback() },
                                             enabled = controllerReady && currentTrack != null
-                                        ) { Text("Stop") }
+                                        ) { Text("Detener") }
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Button(
                                             onClick = { if (autoDjMode == AutoDJMode.ACTIVE) stopAutoDJ("Auto DJ stopped by you.") else startAutoDJ() },
                                             enabled = controllerReady && deckBController != null && currentTrack != null && tracks.isNotEmpty()
-                                        ) { Text(if (autoDjMode == AutoDJMode.ACTIVE) "Stop Auto DJ" else "Start Auto DJ") }
+                                        ) { Text(if (autoDjMode == AutoDJMode.ACTIVE) "Detener Auto DJ" else "Iniciar Auto DJ") }
                                         Text(autoDjMessage, color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Button(onClick = { showAdvancedControls = !showAdvancedControls }) {
-                                            Text(if (showAdvancedControls) "Hide advanced controls" else "Advanced controls")
+                                            Text(if (showAdvancedControls) "Ocultar controles avanzados" else "Controles avanzados")
                                         }
                                     }
                                     if (showAdvancedControls) {
@@ -611,16 +611,16 @@ class MainActivity : ComponentActivity() {
                             Text("BIBLIOTECA MUSICAL", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
                             Spacer(Modifier.weight(1f))
                             Text("${tracks.size} tracks", color = Color(0xFF9AA39A), style = MaterialTheme.typography.labelSmall)
-                            Button(onClick = { showQueue = !showQueue }, enabled = controllerReady) { Text(if (showQueue) "Hide queue" else "Queue") }
-                            Button(onClick = { loadLibrary() }, enabled = permissionGranted) { Text("Scan") }
+                            Button(onClick = { showQueue = !showQueue }, enabled = controllerReady) { Text(if (showQueue) "Ocultar cola" else "Cola") }
+                            Button(onClick = { loadLibrary() }, enabled = permissionGranted) { Text("Escanear") }
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { showFavoritesOnly = false; selectedPlaylistName = null }) {
-                                Text(if (!showFavoritesOnly && selectedPlaylistName == null) "All tracks ✓" else "All tracks")
+                                Text(if (!showFavoritesOnly && selectedPlaylistName == null) "Todas ✓" else "Todas")
                             }
                             Button(onClick = { showFavoritesOnly = true; selectedPlaylistName = null }) {
-                                Text(if (showFavoritesOnly) "Favorites ✓" else "Favorites")
+                                Text(if (showFavoritesOnly) "Favoritas ✓" else "Favoritas")
                             }
                         }
 
@@ -634,7 +634,7 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { playlistNameInput = it },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true,
-                                placeholder = { Text("New playlist name") }
+                                placeholder = { Text("Nombre de la lista") }
                             )
                             Button(
                                 onClick = {
@@ -649,7 +649,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 enabled = playlistNameInput.isNotBlank() && filteredTracks.isNotEmpty()
-                            ) { Text("Save") }
+                            ) { Text("Guardar") }
                         }
                         if (playlistNames.isNotEmpty()) {
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -665,7 +665,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (showQueue) {
-                            Text("UP NEXT  ·  ${queueTracks.size} tracks", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.labelLarge)
+                            Text("A CONTINUACIÓN  ·  ${queueTracks.size} canciones", color = Color(0xFF9B8CFF), style = MaterialTheme.typography.labelLarge)
                             val nextTracks = queueTracks.drop((controller?.currentMediaItemIndex ?: 0) + 1).take(5)
                             if (nextTracks.isEmpty()) {
                                 Text("No upcoming tracks in the queue.", color = Color(0xFF9AA39A))
@@ -687,7 +687,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             enabled = permissionGranted,
-                            placeholder = { Text("Search songs, artists or albums") },
+                            placeholder = { Text("Buscar canciones, artistas o álbumes") },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color(0xFF9B8CFF),
                                 cursorColor = Color(0xFF9B8CFF),
@@ -698,10 +698,10 @@ class MainActivity : ComponentActivity() {
 
                         if (!permissionGranted) {
                             Text("Allow DJPDC to read audio files stored on this device.", color = Color(0xFFADB5AD))
-                            Button(onClick = { requestAudioPermission() }) { Text("Grant music access") }
+                            Button(onClick = { requestAudioPermission() }) { Text("Permitir acceso") }
                         } else if (tracks.isEmpty()) {
                             Text(libraryMessage, color = Color(0xFFADB5AD))
-                            Button(onClick = { loadLibrary() }) { Text("Rescan library") }
+                            Button(onClick = { loadLibrary() }) { Text("Volver a escanear") }
                         } else if (filteredTracks.isEmpty()) {
                             Text(if (showFavoritesOnly) "No favorites yet. Tap ☆ on a track to save it." else "No tracks match your search.", color = Color(0xFFADB5AD))
                         } else {
@@ -1237,7 +1237,7 @@ private fun TrackRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Button(onClick = onLoadDeckB, enabled = enabled) { Text("Load B") }
+            Button(onClick = onLoadDeckB, enabled = enabled) { Text("Cargar en B") }
             Button(onClick = onFavoriteClick) { Text(if (isFavorite) "★" else "☆") }
         }
     }
