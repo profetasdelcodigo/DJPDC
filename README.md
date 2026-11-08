@@ -26,13 +26,15 @@ DJPDC is an Android application built around a local-first audio engine, with an
 - Instant library search across song titles, artists, and albums.
 - Shuffle playback and repeat modes (off, all, and one).
 - Favorites saved locally and restored between app sessions, with an all-tracks/favorites filter.
+- Custom playlists saved locally by name, with playlist filtering and playback limited to the selected playlist.
+- Album artwork loaded from MediaStore and shown in the now-playing panel using Coil Compose.
 - GitHub Actions workflow to attempt a debug APK build on pushes and pull requests.
 
 ## Roadmap
 
 1. Validate the Android build on CI and a physical device.
 2. Verify background playback service, media notification, lock-screen controls, and queue management.
-3. Add user-created playlists and richer metadata; album artwork is now integrated.
+3. Add playlist editing (rename, remove tracks, delete playlists) and richer metadata; basic local playlists and album artwork are integrated.
 4. Build the two-deck engine, BPM analysis, beat matching, and transitions.
 5. Add intelligent track selection and transition suggestions through a secure backend.
 6. Optimize audio performance and test across Android devices.
@@ -57,3 +59,10 @@ A successful workflow run is still required before treating the current source a
 - Reads each track album ID from MediaStore.
 - Builds the local album-art content URI and loads artwork with Coil for Compose.
 - Shows a DJPDC fallback tile when a track has no embedded or indexed artwork.
+
+
+### Custom playlists (Beta 0.6)
+- Save the currently filtered library tracks into a named playlist.
+- Playlist names and track IDs persist locally using SharedPreferences.
+- Select a playlist to filter the library and play only its tracks.
+- Tap the selected playlist again or choose All tracks to return to the full library.
