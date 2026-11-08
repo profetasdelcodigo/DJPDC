@@ -80,5 +80,7 @@ A successful workflow run is still required before treating the current source a
 - Adds an independent Deck B MediaSession service and ExoPlayer instance.
 - Tracks can be loaded into Deck B from the local library and played or paused independently of Deck A.
 - Adds an equal-power crossfader that adjusts the actual volume of both players.
+- Adds independent Deck A and Deck B channel-volume faders, combined with crossfader gain.
+- Adds a Deck B return-to-start control that pauses the deck and seeks to the beginning of its loaded track.
 - Crossfader endpoints route audio to one deck; the center balances both decks.
-- This is the first functional two-player mixing foundation. BPM detection, beat synchronization, EQ, effects, and device-level audio latency tuning remain future work.
+- This is the first functional two-player mixing foundation with per-deck level controls. BPM detection, beat synchronization, EQ, effects, and device-level audio latency tuning remain future work.
