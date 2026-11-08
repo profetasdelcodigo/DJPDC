@@ -317,7 +317,7 @@ private fun TrackRow(
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
         color = Color(0xFF151815),
         shape = RoundedCornerShape(14.dp)
     ) {
