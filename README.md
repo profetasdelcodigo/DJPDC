@@ -173,3 +173,20 @@ an accepted transition plan.
 This policy is deliberately not connected to Media3 yet. It cannot start,
 pause or stop audio on its own; the playback coordinator must enforce these
 checks immediately before any future transition.
+
+
+### Local Auto DJ coordinator
+
+`AutoDJCoordinator` now joins the explicit session gate, MediaStore-derived
+metadata snapshot, local candidate selector and transition validator. It can
+attach a current track only when its ID exists in the supplied local library,
+propose a different local candidate, and create a short-lived handoff approval.
+
+The handoff check revalidates the current session mode, current track identity,
+next-track membership and transition constraints. A pause, stop, changed
+current track, missing library item or invalid duration blocks the handoff.
+
+Important: this coordinator returns a decision/approval only. It does not call
+Media3, start Deck B, schedule a crossfade, or control audio. The next
+implementation step is a playback executor that performs a fresh handoff check
+immediately before loading Deck B and that can cancel safely on user pause/stop.
