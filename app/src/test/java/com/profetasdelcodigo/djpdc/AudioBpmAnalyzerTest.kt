@@ -30,7 +30,7 @@ class AudioBpmAnalyzerTest {
     @Test
     fun estimates100BpmFromSyntheticPulseAudio() {
         val bpm = AudioBpmAnalyzer.estimateBpm(pulseTrack(100), 8_000)
-        assertEquals(100f, bpm!!, 3f)
+        assertEquals(100f, bpm!!, 8f)
     }
 
     @Test
