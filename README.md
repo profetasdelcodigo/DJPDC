@@ -236,3 +236,9 @@ are disabled; the Stop Auto DJ control remains available.
 
 This is a UI organization improvement, not evidence of physical-device
 playback validation.
+
+### Extended local audio decoding (GPL-3.0-or-later)
+- Adds Jellyfin's Media3 FFmpeg audio decoder as a fallback renderer for both Deck A and Deck B.
+- Android's native MediaCodec decoders remain preferred; FFmpeg is available when the platform decoder cannot handle a local audio format.
+- This improves local-file format coverage; it does not itself perform beatmatching, phrase detection, or DJ transitions.
+- The dependency is GPL-3.0. DJPDC is distributed under GPL-3.0-or-later and includes the corresponding license and third-party notices.
