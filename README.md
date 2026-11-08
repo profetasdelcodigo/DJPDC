@@ -84,6 +84,9 @@ A successful workflow run is still required before treating the current source a
 - Adds a Deck B return-to-start control that pauses the deck and seeks to the beginning of its loaded track.
 - Adds a manual tap-tempo control for Deck B: three or more taps estimate BPM from recent intervals using a median filter; this is manual tempo measurement, not automatic audio-track BPM detection.
 - Adds independent temporary CUE points for Deck A and Deck B: set a marker at the current playback position and jump back to it during a mix. Cue markers reset when a different track is loaded into that deck and are currently session-only.
+- Adds manual tap-tempo measurement for both Deck A and Deck B.
+- Adds a bounded beatmatch control to adjust Deck B playback speed toward Deck A's measured BPM, with a maximum correction of ±8% and pitch-preserving playback parameters; the adjustment can be reset to normal speed.
+- Beatmatch speed calculations have unit tests for matching, adjustment limits, and invalid tempo values. This is manual BPM-based tempo matching; automatic beat-grid alignment and phase synchronization are not yet implemented.
 - Adds unit tests for tap-tempo calculation, minimum taps, outlier resistance, and supported tempo range.
 - Crossfader endpoints route audio to one deck; the center balances both decks.
 - This is the first functional two-player mixing foundation with per-deck level controls and manual tap-tempo measurement. Automatic audio BPM detection, beat synchronization, EQ, effects, and device-level audio latency tuning remain future work.
