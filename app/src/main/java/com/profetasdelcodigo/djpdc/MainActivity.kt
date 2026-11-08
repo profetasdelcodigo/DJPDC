@@ -9,7 +9,9 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
@@ -224,7 +226,8 @@ class MainActivity : ComponentActivity() {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = Color(0xFF141522),
-                            shape = RoundedCornerShape(22.dp)
+                            shape = RoundedCornerShape(22.dp),
+                            border = BorderStroke(1.dp, Color(0xFF2B2D45))
                         ) {
                             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("REPRODUCIENDO AHORA", color = Color(0xFF62D9E8), style = MaterialTheme.typography.labelLarge)
@@ -1192,12 +1195,32 @@ private fun TrackRow(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color(0xFF141522),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFF25273C))
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (track.albumArtUri != null) {
+                AsyncImage(
+                    model = track.albumArtUri,
+                    contentDescription = "Album artwork",
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    color = Color(0xFF24243A),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("♪", color = Color(0xFF62D9E8), style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+            }
             Column(
                 modifier = Modifier.weight(1f).clickable(enabled = enabled, onClick = onClick)
                     .padding(vertical = 6.dp),
